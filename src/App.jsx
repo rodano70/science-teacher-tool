@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as XLSX from 'xlsx'
 
 function App() {
   const [examBoard, setExamBoard] = useState('')
@@ -6,6 +7,92 @@ function App() {
   const [topic, setTopic] = useState('')
   const [gradeBoundaries, setGradeBoundaries] = useState('')
   const [excelFile, setExcelFile] = useState(null)
+  const [studentData, setStudentData] = useState(null)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  function handleFileChange(e) {
+    const file = e.target.files[0] || null
+    setExcelFile(file)
+    setStudentData(null)
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const workbook = XLSX.read(evt.target.result, { type: 'array' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+      setStudentData(rows)
+      console.log('Parsed student data:', rows)
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  async function handleGenerateFeedback() {
+    setError('')
+    setFeedbackText('')
+
+    if (!studentData || studentData.length === 0) {
+      setError('Please upload an Excel file with student data first.')
+      return
+    }
+    if (!examBoard || !subject || !topic) {
+      setError('Please fill in Exam Board, Subject, and Topic.')
+      return
+    }
+
+    const studentList = studentData
+      .map((row, i) => `${i + 1}. ${JSON.stringify(row)}`)
+      .join('\n')
+
+    const userPrompt = `Exam Board: ${examBoard}
+Subject: ${subject}
+Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}
+
+Student data:
+${studentList}
+
+For each student, generate personalised feedback with three sections:
+- WWW (What Went Well)
+- EBI (Even Better If)
+- To Improve (one specific action the student can take)
+
+Format each student's feedback clearly with their name/identifier as a heading.`
+
+    setLoading(true)
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          system:
+            'You are a UK secondary science teacher assistant. Your role is to generate clear, constructive, and curriculum-aligned WWW/EBI/To Improve feedback for students based on their exam results.',
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      })
+
+      if (!response.ok) {
+        const errBody = await response.text()
+        throw new Error(`API error ${response.status}: ${errBody}`)
+      }
+
+      const data = await response.json()
+      const text = data.content?.[0]?.text ?? JSON.stringify(data)
+      setFeedbackText(text)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div style={styles.page}>
@@ -75,7 +162,7 @@ function App() {
                 type="file"
                 accept=".xlsx,.xls"
                 style={{ display: 'none' }}
-                onChange={e => setExcelFile(e.target.files[0] || null)}
+                onChange={handleFileChange}
               />
               {excelFile ? excelFile.name : 'Upload Excel file'}
             </label>
@@ -84,10 +171,29 @@ function App() {
             )}
           </div>
 
-          <button style={styles.generateButton} type="button">
-            Generate Feedback
+          {studentData && (
+            <p style={styles.parsedNote}>
+              {studentData.length} student row{studentData.length !== 1 ? 's' : ''} parsed from Excel.
+            </p>
+          )}
+
+          <button
+            style={{ ...styles.generateButton, opacity: loading ? 0.7 : 1 }}
+            type="button"
+            onClick={handleGenerateFeedback}
+            disabled={loading}
+          >
+            {loading ? 'Generating…' : 'Generate Feedback'}
           </button>
         </div>
+
+        {error && <p style={styles.errorText}>{error}</p>}
+
+        {feedbackText && (
+          <div style={styles.outputBox}>
+            <pre style={styles.outputPre}>{feedbackText}</pre>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -191,6 +297,33 @@ const styles = {
     fontSize: '15px',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  parsedNote: {
+    margin: '0',
+    fontSize: '13px',
+    color: '#10b981',
+  },
+  errorText: {
+    marginTop: '16px',
+    fontSize: '14px',
+    color: '#ef4444',
+  },
+  outputBox: {
+    marginTop: '24px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    maxHeight: '480px',
+    overflowY: 'auto',
+    backgroundColor: '#f9fafb',
+    padding: '16px',
+  },
+  outputPre: {
+    margin: '0',
+    fontSize: '13px',
+    lineHeight: '1.6',
+    color: '#374151',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
   },
 }
 
