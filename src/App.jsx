@@ -275,6 +275,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
+      <p style={styles.version}>v0.2</p>
     </div>
   )
 }
@@ -391,6 +392,14 @@ const styles = {
     fontSize: '15px',
     fontWeight: '700',
     color: '#1a1a2e',
+  },
+  version: {
+    position: 'fixed',
+    bottom: '12px',
+    right: '16px',
+    margin: '0',
+    fontSize: '11px',
+    color: '#9ca3af',
   },
   outputPre: {
     margin: '0',
