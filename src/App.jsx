@@ -1,33 +1,20 @@
 import { useState } from 'react'
-import * as XLSX from 'xlsx'
+import FileUpload from './FileUpload'
 
 function App() {
+  // Shared state — both features read from studentData
+  const [studentData, setStudentData] = useState(null)
+
+  // Shared form fields
   const [examBoard, setExamBoard] = useState('')
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [gradeBoundaries, setGradeBoundaries] = useState('')
-  const [excelFile, setExcelFile] = useState(null)
-  const [studentData, setStudentData] = useState(null)
+
+  // Individual feedback state
   const [feedbackText, setFeedbackText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  function handleFileChange(e) {
-    const file = e.target.files[0] || null
-    setExcelFile(file)
-    setStudentData(null)
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const workbook = XLSX.read(evt.target.result, { type: 'array' })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-      setStudentData(rows)
-      console.log('Parsed student data:', rows)
-    }
-    reader.readAsArrayBuffer(file)
-  }
 
   async function handleGenerateFeedback() {
     setError('')
@@ -155,27 +142,8 @@ Format each student's feedback clearly with their name/identifier as a heading.`
             />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Student Results (Excel)</label>
-            <label style={styles.uploadButton}>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-              {excelFile ? excelFile.name : 'Upload Excel file'}
-            </label>
-            {excelFile && (
-              <span style={styles.fileName}>{excelFile.name}</span>
-            )}
-          </div>
-
-          {studentData && (
-            <p style={styles.parsedNote}>
-              {studentData.length} student row{studentData.length !== 1 ? 's' : ''} parsed from Excel.
-            </p>
-          )}
+          {/* Shared upload component — both features use this parsed data */}
+          <FileUpload onDataParsed={setStudentData} />
 
           <button
             style={{ ...styles.generateButton, opacity: loading ? 0.7 : 1 }}
@@ -183,7 +151,7 @@ Format each student's feedback clearly with their name/identifier as a heading.`
             onClick={handleGenerateFeedback}
             disabled={loading}
           >
-            {loading ? 'Generating…' : 'Generate Feedback'}
+            {loading ? 'Generating…' : 'Generate Individual Feedback'}
           </button>
         </div>
 
@@ -270,23 +238,6 @@ const styles = {
     color: '#374151',
     outline: 'none',
   },
-  uploadButton: {
-    display: 'inline-block',
-    padding: '10px 16px',
-    borderRadius: '8px',
-    border: '1px dashed #d1d5db',
-    fontSize: '14px',
-    color: '#6b7280',
-    cursor: 'pointer',
-    textAlign: 'center',
-    backgroundColor: '#f9fafb',
-    transition: 'background-color 0.15s',
-  },
-  fileName: {
-    fontSize: '13px',
-    color: '#10b981',
-    marginTop: '4px',
-  },
   generateButton: {
     marginTop: '8px',
     padding: '12px',
@@ -297,11 +248,6 @@ const styles = {
     fontSize: '15px',
     fontWeight: '600',
     cursor: 'pointer',
-  },
-  parsedNote: {
-    margin: '0',
-    fontSize: '13px',
-    color: '#10b981',
   },
   errorText: {
     marginTop: '16px',
