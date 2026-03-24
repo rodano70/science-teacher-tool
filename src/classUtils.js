@@ -87,13 +87,26 @@ function computeEducakeSummary(rows, keys) {
   )
   const questionLabels = rawKeys.map((_, i) => `Q${i + 1}`)
 
-  const students = studentRows.map(row => {
+  const students = studentRows.map((row, idx) => {
     const name   = `${String(row['Start Date']).trim()} ${String(row['End Date']).trim()}`
     const scores = rawKeys.map(k => {
       const v = Number(row[k])
       return isNaN(v) ? 0 : v
     })
     const total = scores.reduce((a, b) => a + b, 0)
+
+    if (idx === 0) {
+      console.log(`[Educake debug] Scoring columns for "${name}" (questionCount=${questionCount}):`)
+      rawKeys.forEach((k, i) => {
+        console.log(`  ${questionLabels[i]} (${k}): raw="${row[k]}" → ${scores[i]}`)
+      })
+      console.log(`  → total = ${total}`)
+      console.log(`[Educake debug] ALL __EMPTY keys present in this row:`)
+      Object.keys(row)
+        .filter(k => k === '__EMPTY' || k.startsWith('__EMPTY_'))
+        .forEach(k => console.log(`  ${k}: ${row[k]}`))
+    }
+
     return { name, scores, total }
   })
 
