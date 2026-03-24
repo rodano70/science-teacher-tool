@@ -11,6 +11,21 @@
  *   - classAverage: number
  *   - classTotalMax: number
  */
+
+/**
+ * Returns true only if the cell value looks like a real student name:
+ * at least two words, each word containing only letters/hyphens/apostrophes.
+ * Filters out metadata rows (empty, single-word labels, numeric cells).
+ */
+function isValidStudentName(value) {
+  if (value === null || value === undefined) return false
+  const name = String(value).trim()
+  if (!name) return false
+  const parts = name.split(/\s+/)
+  if (parts.length < 2) return false
+  return parts.every(p => /^[A-Za-z][A-Za-z'\-]*$/.test(p))
+}
+
 export function computeClassSummary(rows) {
   if (!rows || rows.length === 0) return null
 
@@ -22,33 +37,44 @@ export function computeClassSummary(rows) {
     keys[0]
 
   // --- Identify question / mark columns ---
-  // Heuristic: numeric columns that are not the name column and not a "total" column.
-  // We count how many rows have a numeric value for each key.
+  // Heuristic:
+  //   1. Not the name column
+  //   2. Not a summary column (total, score, mark, grade, result)
+  //   3. Not a SheetJS placeholder (__EMPTY_x) — these are blank header cells
+  //   4. At least 30% of rows have a numeric value
+  //   5. Max value across all rows is ≤ 20 — excludes UPN numbers, timestamps,
+  //      quiz durations, and other large integers that are not mark-scheme scores
   const numericKeys = keys.filter(k => {
     if (k === nameKey) return false
+    if (k.startsWith('__EMPTY')) return false                        // Bug 1 fix
     if (/total|score|mark|grade|result/i.test(k)) return false
-    const numericCount = rows.filter(r => {
-      const v = r[k]
-      return v !== '' && !isNaN(Number(v))
-    }).length
-    return numericCount > rows.length * 0.3 // at least 30% of rows have a number
+    const numericVals = rows
+      .map(r => r[k])
+      .filter(v => v !== '' && v !== null && v !== undefined && !isNaN(Number(v)))
+      .map(Number)
+    if (numericVals.length < rows.length * 0.3) return false        // < 30% numeric
+    const maxVal = Math.max(...numericVals)
+    if (maxVal > 20) return false                                    // Bug 2 fix
+    return true
   })
 
   // If we couldn't find question columns, fall back to all numeric-ish columns
   const questionKeys = numericKeys.length > 0
     ? numericKeys
-    : keys.filter(k => k !== nameKey)
+    : keys.filter(k => k !== nameKey && !k.startsWith('__EMPTY'))
 
-  // --- Per-student totals ---
-  const students = rows.map(row => {
-    const name = String(row[nameKey] || '').trim() || 'Unknown'
-    const scores = questionKeys.map(k => {
-      const v = Number(row[k])
-      return isNaN(v) ? 0 : v
+  // --- Per-student totals (Bug 3 fix: skip metadata rows) ---
+  const students = rows
+    .filter(row => isValidStudentName(row[nameKey]))                 // Bug 3 fix
+    .map(row => {
+      const name = String(row[nameKey]).trim()
+      const scores = questionKeys.map(k => {
+        const v = Number(row[k])
+        return isNaN(v) ? 0 : v
+      })
+      const total = scores.reduce((a, b) => a + b, 0)
+      return { name, scores, total }
     })
-    const total = scores.reduce((a, b) => a + b, 0)
-    return { name, scores, total }
-  })
 
   // --- Non-completers: total score = 0 ---
   const nonCompleters = students
@@ -92,7 +118,7 @@ export function computeClassSummary(rows) {
     : 0
 
   return {
-    studentCount: rows.length,
+    studentCount: students.length,
     questions,
     nonCompleters,
     topStudents,
