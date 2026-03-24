@@ -4,20 +4,11 @@ import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
 import { computeClassSummary, formatSummaryForPrompt, extractStudentsForFeedback } from './classUtils'
 
-const WCF_MESSAGES = [
-  'Parsing student results...',
-  'Calculating question averages...',
-  'Identifying misconceptions...',
-  'Drafting feedback sections...',
-  'Almost done...',
-]
-
-const INDIVIDUAL_MESSAGES = [
-  'Analysing individual performance...',
-  'Writing personalised feedback...',
-  'Preparing student comments...',
-  'Almost done...',
-]
+// How far to advance per 250 ms tick as a fraction of the remaining gap to 90%.
+// 0.04 means "close 4% of the remaining gap each tick" — gives a natural deceleration.
+const PROGRESS_STEP_FRACTION = 0.04
+const PROGRESS_TICK_MS = 250
+const PROGRESS_CAP = 90
 
 function App() {
   // Shared state — both features read from studentData
@@ -40,29 +31,31 @@ function App() {
   const [wcfLoading, setWcfLoading] = useState(false)
   const [wcfError, setWcfError] = useState('')
 
-  // Loading message cycling
-  const [wcfMessage, setWcfMessage] = useState('')
-  const [feedbackMessage, setFeedbackMessage] = useState('')
+  // Progress bars (0-100)
+  const [wcfProgress, setWcfProgress] = useState(0)
+  const [feedbackProgress, setFeedbackProgress] = useState(0)
 
   useEffect(() => {
-    if (!wcfLoading) { setWcfMessage(''); return }
-    let i = 0
-    setWcfMessage(WCF_MESSAGES[0])
+    if (!wcfLoading) { setWcfProgress(0); return }
+    setWcfProgress(0)
     const timer = setInterval(() => {
-      i = (i + 1) % WCF_MESSAGES.length
-      setWcfMessage(WCF_MESSAGES[i])
-    }, 2000)
+      setWcfProgress(prev => {
+        if (prev >= PROGRESS_CAP) return prev
+        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+      })
+    }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
   }, [wcfLoading])
 
   useEffect(() => {
-    if (!feedbackLoading) { setFeedbackMessage(''); return }
-    let i = 0
-    setFeedbackMessage(INDIVIDUAL_MESSAGES[0])
+    if (!feedbackLoading) { setFeedbackProgress(0); return }
+    setFeedbackProgress(0)
     const timer = setInterval(() => {
-      i = (i + 1) % INDIVIDUAL_MESSAGES.length
-      setFeedbackMessage(INDIVIDUAL_MESSAGES[i])
-    }, 2000)
+      setFeedbackProgress(prev => {
+        if (prev >= PROGRESS_CAP) return prev
+        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+      })
+    }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
   }, [feedbackLoading])
 
@@ -162,6 +155,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
         setFeedbackError(err.message)
       }
     } finally {
+      setFeedbackProgress(100)
       setFeedbackLoading(false)
     }
   }
@@ -302,6 +296,7 @@ Base your analysis on the question averages and student performance data provide
         setWcfError(err.message)
       }
     } finally {
+      setWcfProgress(100)
       setWcfLoading(false)
     }
   }
@@ -418,7 +413,7 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateWCF}
               disabled={wcfLoading}
             >
-              {wcfLoading ? (wcfMessage || 'Generating…') : 'Generate Class Feedback Sheet'}
+              {wcfLoading ? 'Generating…' : 'Generate Class Feedback Sheet'}
             </button>
 
             <button
@@ -427,9 +422,29 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateFeedback}
               disabled={feedbackLoading}
             >
-              {feedbackLoading ? (feedbackMessage || 'Generating…') : 'Generate Individual Feedback'}
+              {feedbackLoading ? 'Generating…' : 'Generate Individual Feedback'}
             </button>
           </div>
+
+          {/* WCF progress bar */}
+          {wcfLoading && (
+            <div>
+              <div style={styles.progressTrack}>
+                <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+              </div>
+              <p style={styles.progressLabel}>Analysing class data…</p>
+            </div>
+          )}
+
+          {/* Individual feedback progress bar */}
+          {feedbackLoading && (
+            <div>
+              <div style={styles.progressTrack}>
+                <div style={{ ...styles.progressBar, width: `${feedbackProgress}%` }} />
+              </div>
+              <p style={styles.progressLabel}>Writing personalised feedback…</p>
+            </div>
+          )}
         </div>
 
         {/* WCF errors */}
@@ -604,6 +619,24 @@ const styles = {
   outputMeta: {
     margin: '0 0 16px',
     fontSize: '14px',
+    color: '#6b7280',
+  },
+  progressTrack: {
+    height: '6px',
+    borderRadius: '3px',
+    backgroundColor: '#e5e7eb',
+    overflow: 'hidden',
+    marginTop: '4px',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: '3px',
+    backgroundColor: '#4f46e5',
+    transition: 'width 0.25s ease-out',
+  },
+  progressLabel: {
+    margin: '6px 0 0',
+    fontSize: '12px',
     color: '#6b7280',
   },
   version: {
