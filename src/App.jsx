@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
-import { computeClassSummary, formatSummaryForPrompt } from './classUtils'
+import { computeClassSummary, formatSummaryForPrompt, extractStudentsForFeedback } from './classUtils'
 
 const WCF_MESSAGES = [
   'Parsing student results...',
@@ -88,15 +88,21 @@ function App() {
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
 
-    const studentList = studentData
-      .map((row, i) => `${i + 1}. ${JSON.stringify(row)}`)
+    const students = extractStudentsForFeedback(studentData)
+    if (!students || students.length === 0) {
+      setFeedbackError('Could not extract student data from the uploaded file.')
+      return
+    }
+
+    const studentList = students
+      .map(s => `${s.name} — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
       .join('\n')
 
     const userPrompt = `Exam Board: ${examBoard}
 Subject: ${subject}
 Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}
 
-Student data:
+Student data (Name — Total score — Per-question scores where 1=correct 0=incorrect):
 ${studentList}
 
 Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text — just the JSON array.
@@ -118,7 +124,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
       const data = await callClaude(
         'You are a UK secondary science teacher assistant. Generate personalised WWW/EBI/To Improve feedback for each student based on their exam results. Return only a valid JSON array with no markdown fences.',
         userPrompt,
-        4000
+        8000
       )
       let rawText = data.content?.[0]?.text ?? ''
       rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()

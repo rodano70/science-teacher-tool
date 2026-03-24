@@ -222,6 +222,78 @@ export function computeClassSummary(rows) {
 }
 
 /**
+ * Extract a clean, flat list of students for individual feedback generation.
+ * Returns [{name, total, maxTotal, breakdown}] where breakdown is "Q1:1, Q2:0, ..."
+ * Skips metadata/blank rows using the same logic as computeClassSummary.
+ */
+export function extractStudentsForFeedback(rows) {
+  if (!rows || rows.length === 0) return []
+  const keys = Object.keys(rows[0])
+
+  if (isEducakeFormat(keys)) {
+    const studentRows = rows.filter(row => {
+      const firstName = String(row['Start Date'] || '').trim()
+      const lastName  = String(row['End Date']   || '').trim()
+      if (!firstName || !lastName) return false
+      if (firstName === 'All Students') return false
+      if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(firstName)) return false
+      return true
+    })
+    if (studentRows.length === 0) return []
+
+    let questionCount = 0
+    for (const row of rows) {
+      const q = Number(row['Questions'])
+      if (!isNaN(q) && q > 0) { questionCount = q; break }
+    }
+
+    const allEmptyKeys = Object.keys(studentRows[0])
+      .filter(k => k === '__EMPTY' || /^__EMPTY_\d+$/.test(k))
+      .sort((a, b) => {
+        const na = a === '__EMPTY' ? 0 : parseInt(a.slice('__EMPTY_'.length), 10)
+        const nb = b === '__EMPTY' ? 0 : parseInt(b.slice('__EMPTY_'.length), 10)
+        return na - nb
+      })
+    const rawKeys = allEmptyKeys.slice(-questionCount)
+
+    return studentRows.map(row => {
+      const name   = `${String(row['Start Date']).trim()} ${String(row['End Date']).trim()}`
+      const scores = rawKeys.map(k => { const v = Number(row[k]); return isNaN(v) ? 0 : v })
+      const total  = scores.reduce((a, b) => a + b, 0)
+      return { name, total, maxTotal: questionCount, breakdown: scores.map((s, i) => `Q${i + 1}:${s}`).join(', ') }
+    })
+  }
+
+  // Generic format
+  const nameKey =
+    keys.find(k => /^(student[\s_]?name|name|pupil|student)$/i.test(k.trim())) ||
+    keys[0]
+  const numericKeys = keys.filter(k => {
+    if (k === nameKey || k.startsWith('__EMPTY')) return false
+    if (/total|score|mark|grade|result/i.test(k)) return false
+    const vals = rows.map(r => r[k]).filter(v => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))).map(Number)
+    return vals.length >= rows.length * 0.3 && Math.max(...vals) <= 20
+  })
+  const questionKeys = numericKeys.length > 0
+    ? numericKeys
+    : keys.filter(k => k !== nameKey && !k.startsWith('__EMPTY'))
+
+  const maxTotal = questionKeys.reduce((sum, k) => {
+    const vals = rows.map(r => Number(r[k])).filter(v => !isNaN(v))
+    return sum + (vals.length > 0 ? Math.max(...vals) : 0)
+  }, 0)
+
+  return rows
+    .filter(row => isValidStudentName(row[nameKey]))
+    .map(row => {
+      const name   = String(row[nameKey]).trim()
+      const scores = questionKeys.map(k => { const v = Number(row[k]); return isNaN(v) ? 0 : v })
+      const total  = scores.reduce((a, b) => a + b, 0)
+      return { name, total, maxTotal, breakdown: scores.map((s, i) => `${questionKeys[i]}:${s}`).join(', ') }
+    })
+}
+
+/**
  * Format the class summary as a readable string for the Claude prompt.
  */
 export function formatSummaryForPrompt(summary) {
