@@ -121,7 +121,7 @@ Base your analysis on the question averages and student performance data provide
       const data = await callClaude(
         'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a structured Whole Class Feedback sheet as a JSON object. Return only valid JSON with no markdown fences.',
         userPrompt,
-        2048
+        4000
       )
       let rawText = data.content?.[0]?.text ?? ''
       console.log('RAW API RESPONSE:', rawText)
@@ -284,7 +284,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.7</p>
+      <p style={styles.version}>v0.8</p>
     </div>
   )
 }
