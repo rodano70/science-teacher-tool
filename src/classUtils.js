@@ -70,8 +70,6 @@ function computeEducakeSummary(rows, keys) {
 
   if (studentRows.length === 0) return null
 
-  console.log('EDUCAKE FIRST STUDENT ROW KEYS:', Object.keys(studentRows[0]))
-
   // Read the question count from the first metadata row that has a numeric
   // value in the 'Questions' column (e.g. row 0 has Questions: 19).
   let questionCount = 0
@@ -80,33 +78,28 @@ function computeEducakeSummary(rows, keys) {
     if (!isNaN(q) && q > 0) { questionCount = q; break }
   }
 
-  // SheetJS maps blank header cells to __EMPTY (first), __EMPTY_1, __EMPTY_2 …
-  // So Q1 = __EMPTY, Q2 = __EMPTY_1, … QN = __EMPTY_{N-1}
-  const rawKeys = Array.from({ length: questionCount }, (_, i) =>
-    i === 0 ? '__EMPTY' : `__EMPTY_${i}`
-  )
+  // Educake exports several unnamed aggregate columns (rank, subtotals, total,
+  // percentage) BEFORE the per-question score columns.  All unnamed columns are
+  // mapped by SheetJS to __EMPTY, __EMPTY_1, __EMPTY_2 … in left-to-right order.
+  // The individual question scores are always the LAST `questionCount` of these
+  // keys, so we sort them numerically and take the tail.
+  const allEmptyKeys = Object.keys(studentRows[0])
+    .filter(k => k === '__EMPTY' || /^__EMPTY_\d+$/.test(k))
+    .sort((a, b) => {
+      const na = a === '__EMPTY' ? 0 : parseInt(a.slice('__EMPTY_'.length), 10)
+      const nb = b === '__EMPTY' ? 0 : parseInt(b.slice('__EMPTY_'.length), 10)
+      return na - nb
+    })
+  const rawKeys = allEmptyKeys.slice(-questionCount)
   const questionLabels = rawKeys.map((_, i) => `Q${i + 1}`)
 
-  const students = studentRows.map((row, idx) => {
+  const students = studentRows.map(row => {
     const name   = `${String(row['Start Date']).trim()} ${String(row['End Date']).trim()}`
     const scores = rawKeys.map(k => {
       const v = Number(row[k])
       return isNaN(v) ? 0 : v
     })
     const total = scores.reduce((a, b) => a + b, 0)
-
-    if (idx === 0) {
-      console.log(`[Educake debug] Scoring columns for "${name}" (questionCount=${questionCount}):`)
-      rawKeys.forEach((k, i) => {
-        console.log(`  ${questionLabels[i]} (${k}): raw="${row[k]}" → ${scores[i]}`)
-      })
-      console.log(`  → total = ${total}`)
-      console.log(`[Educake debug] ALL __EMPTY keys present in this row:`)
-      Object.keys(row)
-        .filter(k => k === '__EMPTY' || k.startsWith('__EMPTY_'))
-        .forEach(k => console.log(`  ${k}: ${row[k]}`))
-    }
-
     return { name, scores, total }
   })
 
