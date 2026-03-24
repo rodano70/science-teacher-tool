@@ -66,11 +66,13 @@ function computeEducakeSummary(rows, keys) {
 
   if (studentRows.length === 0) return null
 
-  // Score columns: anything that is NOT a known metadata key, not a SheetJS
-  // placeholder, and whose values in student rows are numeric and ≤ 20.
+  console.log('EDUCAKE FIRST STUDENT ROW KEYS:', Object.keys(studentRows[0]))
+
+  // Score columns: anything that is NOT a known metadata key and whose values
+  // in student rows are numeric and ≤ 20. __EMPTY_N columns are included
+  // because Educake exports Q1–Q19 under blank header cells.
   const scoreKeys = keys.filter(k => {
     if (EDUCAKE_META_KEYS.has(k)) return false
-    if (k.startsWith('__EMPTY')) return false
     if (/total|score|mark|grade|result/i.test(k)) return false
     const numericVals = studentRows
       .map(r => r[k])
