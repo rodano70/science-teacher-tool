@@ -275,7 +275,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.3</p>
+      <p style={styles.version}>v0.4</p>
     </div>
   )
 }
