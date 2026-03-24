@@ -88,14 +88,19 @@ function App() {
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
 
-    const students = extractStudentsForFeedback(studentData)
-    if (!students || students.length === 0) {
+    const rawStudents = extractStudentsForFeedback(studentData)
+    if (!rawStudents || rawStudents.length === 0) {
       setFeedbackError('Could not extract student data from the uploaded file.')
       return
     }
 
+    const students = rawStudents.map(s => ({ ...s, completed: s.total > 0 }))
+
     const studentList = students
-      .map(s => `${s.name} — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
+      .map(s => s.completed
+        ? `${s.name} [completed: true] — ${s.total}/${s.maxTotal} — ${s.breakdown}`
+        : `${s.name} [completed: false]`
+      )
       .join('\n')
 
     const userPrompt = `Exam Board: ${examBoard}
@@ -104,6 +109,8 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 
 Student data (Name — Total score — Per-question scores where 1=correct 0=incorrect):
 ${studentList}
+
+IMPORTANT: Students marked [completed: false] did not submit their work. For these students only, write a single short sentence in the "www" field noting that no submission was recorded. Set "ebi" and "to_improve" to "" (empty strings). Set "score" to "Did not submit". They must still appear in the JSON array.
 
 Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text — just the JSON array.
 
@@ -117,7 +124,7 @@ Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text �
   }
 ]
 
-Generate personalised WWW / EBI / To Improve feedback for every student. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
+Generate personalised WWW / EBI / To Improve feedback for every student who completed the work. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
     setFeedbackLoading(true)
     try {
@@ -157,7 +164,9 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
     ]
 
     feedbackData.forEach((student, idx) => {
-      const nameText = student.score
+      const isNonCompleter = !student.ebi && !student.to_improve
+
+      const nameText = student.score && student.score !== 'Did not submit'
         ? `${student.name}  —  ${student.score}`
         : student.name
 
@@ -167,28 +176,40 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
           children: [new TextRun({ text: nameText, bold: true })],
           spacing: { before: idx === 0 ? 0 : 200, after: 160 },
         }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'WWW: ', bold: true }),
-            new TextRun({ text: student.www ?? '' }),
-          ],
-          spacing: { after: 120 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'EBI: ', bold: true }),
-            new TextRun({ text: student.ebi ?? '' }),
-          ],
-          spacing: { after: 120 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'To Improve: ', bold: true }),
-            new TextRun({ text: student.to_improve ?? '' }),
-          ],
-          spacing: { after: 200 },
-        }),
       )
+
+      if (isNonCompleter) {
+        docChildren.push(
+          new Paragraph({
+            children: [new TextRun({ text: student.www ?? 'No submission recorded.', italics: true })],
+            spacing: { after: 200 },
+          }),
+        )
+      } else {
+        docChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'WWW: ', bold: true }),
+              new TextRun({ text: student.www ?? '' }),
+            ],
+            spacing: { after: 120 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'EBI: ', bold: true }),
+              new TextRun({ text: student.ebi ?? '' }),
+            ],
+            spacing: { after: 120 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'To Improve: ', bold: true }),
+              new TextRun({ text: student.to_improve ?? '' }),
+            ],
+            spacing: { after: 200 },
+          }),
+        )
+      }
 
       if (idx < feedbackData.length - 1) {
         docChildren.push(new Paragraph({ thematicBreak: true, spacing: { after: 200 } }))
