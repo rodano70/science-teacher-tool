@@ -1,7 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
 import { computeClassSummary, formatSummaryForPrompt } from './classUtils'
+
+const WCF_MESSAGES = [
+  'Parsing student results...',
+  'Calculating question averages...',
+  'Identifying misconceptions...',
+  'Drafting feedback sections...',
+  'Almost done...',
+]
+
+const INDIVIDUAL_MESSAGES = [
+  'Analysing individual performance...',
+  'Writing personalised feedback...',
+  'Preparing student comments...',
+  'Almost done...',
+]
 
 function App() {
   // Shared state — both features read from studentData
@@ -14,14 +30,41 @@ function App() {
   const [gradeBoundaries, setGradeBoundaries] = useState('')
 
   // Individual feedback state
-  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackData, setFeedbackData] = useState(null)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackError, setFeedbackError] = useState('')
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false)
 
   // WCF state
   const [wcfData, setWcfData] = useState(null)
   const [wcfLoading, setWcfLoading] = useState(false)
   const [wcfError, setWcfError] = useState('')
+
+  // Loading message cycling
+  const [wcfMessage, setWcfMessage] = useState('')
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+
+  useEffect(() => {
+    if (!wcfLoading) { setWcfMessage(''); return }
+    let i = 0
+    setWcfMessage(WCF_MESSAGES[0])
+    const timer = setInterval(() => {
+      i = (i + 1) % WCF_MESSAGES.length
+      setWcfMessage(WCF_MESSAGES[i])
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [wcfLoading])
+
+  useEffect(() => {
+    if (!feedbackLoading) { setFeedbackMessage(''); return }
+    let i = 0
+    setFeedbackMessage(INDIVIDUAL_MESSAGES[0])
+    const timer = setInterval(() => {
+      i = (i + 1) % INDIVIDUAL_MESSAGES.length
+      setFeedbackMessage(INDIVIDUAL_MESSAGES[i])
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [feedbackLoading])
 
   // ─── Shared validation ────────────────────────────────────────────────────
 
@@ -39,7 +82,8 @@ function App() {
 
   async function handleGenerateFeedback() {
     setFeedbackError('')
-    setFeedbackText('')
+    setFeedbackData(null)
+    setFeedbackSuccess(false)
 
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
@@ -55,27 +99,107 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 Student data:
 ${studentList}
 
-For each student, generate personalised feedback with three sections:
-- WWW (What Went Well)
-- EBI (Even Better If)
-- To Improve (one specific action the student can take)
+Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text — just the JSON array.
 
-Format each student's feedback clearly with their name/identifier as a heading.`
+[
+  {
+    "name": "Student Full Name",
+    "score": "18/19",
+    "www": "What Went Well paragraph...",
+    "ebi": "Even Better If paragraph...",
+    "to_improve": "One specific action the student can take..."
+  }
+]
+
+Generate personalised WWW / EBI / To Improve feedback for every student. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
     setFeedbackLoading(true)
     try {
       const data = await callClaude(
-        'You are a UK secondary science teacher assistant. Your role is to generate clear, constructive, and curriculum-aligned WWW/EBI/To Improve feedback for students based on their exam results.',
+        'You are a UK secondary science teacher assistant. Generate personalised WWW/EBI/To Improve feedback for each student based on their exam results. Return only a valid JSON array with no markdown fences.',
         userPrompt,
-        4096
+        4000
       )
-      const text = data.content?.[0]?.text ?? JSON.stringify(data)
-      setFeedbackText(text)
+      let rawText = data.content?.[0]?.text ?? ''
+      rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()
+      const parsed = JSON.parse(rawText)
+      setFeedbackData(parsed)
     } catch (err) {
-      setFeedbackError(err.message)
+      if (err instanceof SyntaxError) {
+        setFeedbackError('The AI returned an unexpected format. Please try again.')
+      } else {
+        setFeedbackError(err.message)
+      }
     } finally {
       setFeedbackLoading(false)
     }
+  }
+
+  async function handleDownloadWordDoc() {
+    const dateStr = new Date().toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    })
+
+    const docChildren = [
+      new Paragraph({
+        heading: HeadingLevel.TITLE,
+        children: [
+          new TextRun({ text: `${subject} — ${topic} — Individual Feedback — ${dateStr}` }),
+        ],
+        spacing: { after: 400 },
+      }),
+    ]
+
+    feedbackData.forEach((student, idx) => {
+      const nameText = student.score
+        ? `${student.name}  —  ${student.score}`
+        : student.name
+
+      docChildren.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          children: [new TextRun({ text: nameText, bold: true })],
+          spacing: { before: idx === 0 ? 0 : 200, after: 160 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'WWW: ', bold: true }),
+            new TextRun({ text: student.www ?? '' }),
+          ],
+          spacing: { after: 120 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'EBI: ', bold: true }),
+            new TextRun({ text: student.ebi ?? '' }),
+          ],
+          spacing: { after: 120 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'To Improve: ', bold: true }),
+            new TextRun({ text: student.to_improve ?? '' }),
+          ],
+          spacing: { after: 200 },
+        }),
+      )
+
+      if (idx < feedbackData.length - 1) {
+        docChildren.push(new Paragraph({ thematicBreak: true, spacing: { after: 200 } }))
+      }
+    })
+
+    const doc = new Document({ sections: [{ children: docChildren }] })
+    const blob = await Packer.toBlob(doc)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${subject} - ${topic} - Individual Feedback - ${new Date().toISOString().slice(0, 10)}.docx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setFeedbackSuccess(true)
   }
 
   // ─── Feature 2: Whole Class Feedback Sheet ────────────────────────────────
@@ -88,7 +212,6 @@ Format each student's feedback clearly with their name/identifier as a heading.`
     if (err) { setWcfError(err); return }
 
     const summary = computeClassSummary(studentData)
-    console.log('CLASS SUMMARY:', summary)
     if (!summary) {
       setWcfError('Could not compute class summary from the uploaded data.')
       return
@@ -124,15 +247,8 @@ Base your analysis on the question averages and student performance data provide
         4000
       )
       let rawText = data.content?.[0]?.text ?? ''
-      console.log('RAW API RESPONSE:', rawText)
-      rawText = rawText.replace(/^```json\s/, '').replace(/```\s*$/, '').trim()
-      let parsed
-      try {
-        parsed = JSON.parse(rawText)
-      } catch (e) {
-        console.log('PARSE ERROR:', e.message, 'RAW:', rawText)
-        throw e
-      }
+      rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()
+      const parsed = JSON.parse(rawText)
       setWcfData(parsed)
     } catch (err) {
       if (err instanceof SyntaxError) {
@@ -246,7 +362,7 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateWCF}
               disabled={wcfLoading}
             >
-              {wcfLoading ? 'Generating…' : 'Generate Class Feedback Sheet'}
+              {wcfLoading ? (wcfMessage || 'Generating…') : 'Generate Class Feedback Sheet'}
             </button>
 
             <button
@@ -255,7 +371,7 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateFeedback}
               disabled={feedbackLoading}
             >
-              {feedbackLoading ? 'Generating…' : 'Generate Individual Feedback'}
+              {feedbackLoading ? (feedbackMessage || 'Generating…') : 'Generate Individual Feedback'}
             </button>
           </div>
         </div>
@@ -276,15 +392,27 @@ Base your analysis on the question averages and student performance data provide
           />
         )}
 
-        {/* Individual feedback output */}
-        {feedbackText && (
+        {/* Individual feedback — download panel */}
+        {feedbackData && (
           <div style={styles.outputBox}>
-            <h3 style={styles.outputHeading}>Individual Student Feedback</h3>
-            <pre style={styles.outputPre}>{feedbackText}</pre>
+            <h3 style={styles.outputHeading}>Individual Student Feedback Ready</h3>
+            <p style={styles.outputMeta}>
+              Feedback generated for {feedbackData.length} student{feedbackData.length !== 1 ? 's' : ''}.
+            </p>
+            <button
+              style={{ ...styles.button, ...styles.buttonPrimary, maxWidth: '320px' }}
+              type="button"
+              onClick={handleDownloadWordDoc}
+            >
+              Download Feedback as Word Document
+            </button>
+            {feedbackSuccess && (
+              <p style={styles.successText}>Document downloaded successfully.</p>
+            )}
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.9</p>
+      <p style={styles.version}>v0.10</p>
     </div>
   )
 }
@@ -389,6 +517,11 @@ const styles = {
     fontSize: '14px',
     color: '#ef4444',
   },
+  successText: {
+    marginTop: '12px',
+    fontSize: '14px',
+    color: '#16a34a',
+  },
   outputBox: {
     marginTop: '32px',
     border: '1px solid #d1d5db',
@@ -397,10 +530,15 @@ const styles = {
     padding: '20px',
   },
   outputHeading: {
-    margin: '0 0 12px',
+    margin: '0 0 8px',
     fontSize: '15px',
     fontWeight: '700',
     color: '#1a1a2e',
+  },
+  outputMeta: {
+    margin: '0 0 16px',
+    fontSize: '14px',
+    color: '#6b7280',
   },
   version: {
     position: 'fixed',
@@ -409,16 +547,6 @@ const styles = {
     margin: '0',
     fontSize: '11px',
     color: '#9ca3af',
-  },
-  outputPre: {
-    margin: '0',
-    fontSize: '13px',
-    lineHeight: '1.6',
-    color: '#374151',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    maxHeight: '480px',
-    overflowY: 'auto',
   },
 }
 
