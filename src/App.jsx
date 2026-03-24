@@ -123,8 +123,9 @@ Base your analysis on the question averages and student performance data provide
         userPrompt,
         2048
       )
-      const rawText = data.content?.[0]?.text ?? ''
+      let rawText = data.content?.[0]?.text ?? ''
       console.log('RAW API RESPONSE:', rawText)
+      rawText = rawText.replace(/^```json\s/, '').replace(/```\s*$/, '').trim()
       let parsed
       try {
         parsed = JSON.parse(rawText)
@@ -283,7 +284,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.5</p>
+      <p style={styles.version}>v0.6</p>
     </div>
   )
 }
