@@ -88,6 +88,7 @@ Format each student's feedback clearly with their name/identifier as a heading.`
     if (err) { setWcfError(err); return }
 
     const summary = computeClassSummary(studentData)
+    console.log('CLASS SUMMARY:', summary)
     if (!summary) {
       setWcfError('Could not compute class summary from the uploaded data.')
       return
@@ -123,7 +124,14 @@ Base your analysis on the question averages and student performance data provide
         2048
       )
       const rawText = data.content?.[0]?.text ?? ''
-      const parsed = JSON.parse(rawText)
+      console.log('RAW API RESPONSE:', rawText)
+      let parsed
+      try {
+        parsed = JSON.parse(rawText)
+      } catch (e) {
+        console.log('PARSE ERROR:', e.message, 'RAW:', rawText)
+        throw e
+      }
       setWcfData(parsed)
     } catch (err) {
       if (err instanceof SyntaxError) {
