@@ -11,13 +11,17 @@
  *   - classAverage: number
  *   - classTotalMax: number
  *
- * v0.4 — Educake support: SheetJS uses row 0 as header, so first/last name
- *         are in 'Start Date'/'End Date' columns; student rows detected by
- *         non-empty last-name field and skipping date/metadata rows.
+ * v0.6 — Educake fix: use the Questions count from the metadata row to select
+ *         exactly the right __EMPTY_N score columns and label them Q1–QN.
+ *         maxMark is now derived from student scores only, not from aggregate
+ *         rows that contain inflated values (class averages, totals, etc.).
  */
 
 /** Non-score column names in an Educake export */
-const EDUCAKE_META_KEYS = new Set(['Start Date', 'End Date', 'Year', 'Class', 'Questions'])
+const EDUCAKE_META_KEYS = new Set([
+  'Start Date', 'End Date', 'Year', 'Class', 'Questions',
+  'Main Topics', 'Specification Points',
+])
 
 /**
  * Returns true when the parsed rows look like an Educake export.
@@ -68,25 +72,24 @@ function computeEducakeSummary(rows, keys) {
 
   console.log('EDUCAKE FIRST STUDENT ROW KEYS:', Object.keys(studentRows[0]))
 
-  // Score columns: anything that is NOT a known metadata key and whose values
-  // in student rows are numeric and ≤ 20. __EMPTY_N columns are included
-  // because Educake exports Q1–Q19 under blank header cells.
-  const scoreKeys = keys.filter(k => {
-    if (EDUCAKE_META_KEYS.has(k)) return false
-    if (/total|score|mark|grade|result/i.test(k)) return false
-    const numericVals = studentRows
-      .map(r => r[k])
-      .filter(v => v !== '' && v !== null && v !== undefined && !isNaN(Number(v)))
-      .map(Number)
-    if (numericVals.length < studentRows.length * 0.3) return false
-    const maxVal = Math.max(...numericVals)
-    if (maxVal > 20) return false
-    return true
-  })
+  // Read the question count from the first metadata row that has a numeric
+  // value in the 'Questions' column (e.g. row 0 has Questions: 19).
+  let questionCount = 0
+  for (const row of rows) {
+    const q = Number(row['Questions'])
+    if (!isNaN(q) && q > 0) { questionCount = q; break }
+  }
+
+  // SheetJS maps blank header cells to __EMPTY (first), __EMPTY_1, __EMPTY_2 …
+  // So Q1 = __EMPTY, Q2 = __EMPTY_1, … QN = __EMPTY_{N-1}
+  const rawKeys = Array.from({ length: questionCount }, (_, i) =>
+    i === 0 ? '__EMPTY' : `__EMPTY_${i}`
+  )
+  const questionLabels = rawKeys.map((_, i) => `Q${i + 1}`)
 
   const students = studentRows.map(row => {
     const name   = `${String(row['Start Date']).trim()} ${String(row['End Date']).trim()}`
-    const scores = scoreKeys.map(k => {
+    const scores = rawKeys.map(k => {
       const v = Number(row[k])
       return isNaN(v) ? 0 : v
     })
@@ -94,7 +97,7 @@ function computeEducakeSummary(rows, keys) {
     return { name, scores, total }
   })
 
-  return buildSummary(students, scoreKeys, rows)
+  return buildSummary(students, questionLabels)
 }
 
 // ---------------------------------------------------------------------------
@@ -138,38 +141,44 @@ function computeGenericSummary(rows, keys) {
       return { name, scores, total }
     })
 
-  return buildSummary(students, questionKeys, rows)
+  return buildSummary(students, questionKeys)
 }
 
 // ---------------------------------------------------------------------------
 // Shared summary builder
 // ---------------------------------------------------------------------------
 
-function buildSummary(students, questionKeys, rows) {
+/**
+ * @param {Array<{name,scores,total}>} students
+ * @param {string[]} questionLabels  Human-readable label for each score column
+ */
+function buildSummary(students, questionLabels) {
   if (students.length === 0) return null
 
   const nonCompleters = students.filter(s => s.total === 0).map(s => s.name)
   const completers    = students.filter(s => s.total > 0)
 
-  const questions = questionKeys.map((k, i) => {
-    const vals = completers.map(s => s.scores[i]).filter(v => !isNaN(v))
-    const avg  = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+  const questions = questionLabels.map((label, i) => {
+    const completerVals = completers.map(s => s.scores[i]).filter(v => !isNaN(v))
+    const avg     = completerVals.length > 0
+      ? completerVals.reduce((a, b) => a + b, 0) / completerVals.length
+      : 0
 
-    const maxMark = Math.max(...rows.map(r => {
-      const v = Number(r[k])
-      return isNaN(v) ? 0 : v
-    }))
+    // Derive maxMark from the highest score any student achieved on this question.
+    // This avoids inflated values from aggregate/metadata rows in the raw sheet.
+    const allVals = students.map(s => s.scores[i]).filter(v => !isNaN(v))
+    const maxMark = allVals.length > 0 ? Math.max(...allVals) : 0
 
     return {
-      label: k,
+      label,
       maxMark,
       average:    Math.round(avg * 10) / 10,
       averagePct: maxMark > 0 ? Math.round((avg / maxMark) * 100) : null,
     }
   })
 
-  const sorted        = [...completers].sort((a, b) => b.total - a.total)
-  const topStudents   = sorted.slice(0, 3).map(s => ({ name: s.name, total: s.total }))
+  const sorted         = [...completers].sort((a, b) => b.total - a.total)
+  const topStudents    = sorted.slice(0, 3).map(s => ({ name: s.name, total: s.total }))
   const bottomStudents = sorted.slice(-3).reverse().map(s => ({ name: s.name, total: s.total }))
 
   const classTotalMax = questions.reduce((sum, q) => sum + q.maxMark, 0)
