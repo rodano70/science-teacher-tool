@@ -66,6 +66,24 @@ function App() {
     return () => clearInterval(timer)
   }, [feedbackLoading])
 
+  // ─── Reset ────────────────────────────────────────────────────────────────
+
+  function handleReset() {
+    if (!window.confirm('This will clear all results. Are you sure?')) return
+    setStudentData(null)
+    setExamBoard('')
+    setSubject('')
+    setTopic('')
+    setGradeBoundaries('')
+    setFeedbackData(null)
+    setFeedbackLoading(false)
+    setFeedbackError('')
+    setFeedbackSuccess(false)
+    setWcfData(null)
+    setWcfLoading(false)
+    setWcfError('')
+  }
+
   // ─── Shared validation ────────────────────────────────────────────────────
 
   function validateInputs() {
@@ -381,6 +399,17 @@ Base your analysis on the question averages and student performance data provide
           {/* Shared upload — both buttons use the same parsed data */}
           <FileUpload onDataParsed={setStudentData} />
 
+          {/* Start Over — only visible once a file has been uploaded */}
+          {studentData && (
+            <button
+              style={{ ...styles.button, ...styles.buttonReset }}
+              type="button"
+              onClick={handleReset}
+            >
+              Start Over
+            </button>
+          )}
+
           {/* Two output buttons */}
           <div style={styles.buttonRow}>
             <button
@@ -538,6 +567,16 @@ const styles = {
   buttonSecondary: {
     backgroundColor: '#f3f4f6',
     color: '#374151',
+  },
+  buttonReset: {
+    flex: 'none',
+    minWidth: 'unset',
+    width: '100%',
+    backgroundColor: '#fff',
+    color: '#6b7280',
+    border: '1px solid #d1d5db',
+    fontSize: '13px',
+    fontWeight: '500',
   },
   errorText: {
     marginTop: '16px',
