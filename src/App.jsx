@@ -35,6 +35,9 @@ function App() {
   const [wcfProgress, setWcfProgress] = useState(0)
   const [feedbackProgress, setFeedbackProgress] = useState(0)
 
+  // Which output panel is currently visible: null | 'wcf' | 'individual'
+  const [activeOutput, setActiveOutput] = useState(null)
+
   useEffect(() => {
     if (!wcfLoading) { setWcfProgress(0); return }
     setWcfProgress(0)
@@ -75,6 +78,7 @@ function App() {
     setWcfData(null)
     setWcfLoading(false)
     setWcfError('')
+    setActiveOutput(null)
   }
 
   // ─── Shared validation ────────────────────────────────────────────────────
@@ -92,6 +96,9 @@ function App() {
   // ─── Feature 1: Individual Feedback ──────────────────────────────────────
 
   async function handleGenerateFeedback() {
+    setActiveOutput('individual')
+    setWcfData(null)
+    setWcfError('')
     setFeedbackError('')
     setFeedbackData(null)
     setFeedbackSuccess(false)
@@ -244,6 +251,10 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
   // ─── Feature 2: Whole Class Feedback Sheet ────────────────────────────────
 
   async function handleGenerateWCF() {
+    setActiveOutput('wcf')
+    setFeedbackData(null)
+    setFeedbackError('')
+    setFeedbackSuccess(false)
     setWcfError('')
     setWcfData(null)
 
@@ -447,14 +458,12 @@ Base your analysis on the question averages and student performance data provide
           )}
         </div>
 
-        {/* WCF errors */}
+        {/* Errors — always shown regardless of active output */}
         {wcfError && <p style={styles.errorText}>{wcfError}</p>}
-
-        {/* Individual feedback errors */}
         {feedbackError && <p style={styles.errorText}>{feedbackError}</p>}
 
-        {/* WCF output */}
-        {wcfData && (
+        {/* Single output panel — only one renders at a time */}
+        {activeOutput === 'wcf' && wcfData && (
           <WCFSheet
             data={wcfData}
             examBoard={examBoard}
@@ -463,8 +472,7 @@ Base your analysis on the question averages and student performance data provide
           />
         )}
 
-        {/* Individual feedback — download panel */}
-        {feedbackData && (
+        {activeOutput === 'individual' && feedbackData && (
           <div style={styles.outputBox}>
             <h3 style={styles.outputHeading}>Individual Student Feedback Ready</h3>
             <p style={styles.outputMeta}>
@@ -483,7 +491,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.10</p>
+      <p style={styles.version}>v0.11</p>
     </div>
   )
 }
