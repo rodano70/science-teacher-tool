@@ -4,9 +4,11 @@ import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
 import { computeClassSummary, formatSummaryForPrompt, extractStudentsForFeedback } from './classUtils'
 
-// How far to advance per 250 ms tick as a fraction of the remaining gap to 90%.
-// 0.04 means "close 4% of the remaining gap each tick" — gives a natural deceleration.
-const PROGRESS_STEP_FRACTION = 0.04
+// Each tick, advance by max(fraction × remaining gap, min step).
+// Lower fraction slows the initial rush; the min step floor keeps the bar
+// visibly moving near the 90% cap instead of appearing to freeze.
+const PROGRESS_STEP_FRACTION = 0.02
+const PROGRESS_MIN_STEP = 0.5   // % per tick — floor near the cap
 const PROGRESS_TICK_MS = 250
 const PROGRESS_CAP = 90
 
@@ -44,7 +46,8 @@ function App() {
     const timer = setInterval(() => {
       setWcfProgress(prev => {
         if (prev >= PROGRESS_CAP) return prev
-        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+        const step = Math.max((PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION, PROGRESS_MIN_STEP)
+        return Math.min(prev + step, PROGRESS_CAP)
       })
     }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
@@ -56,7 +59,8 @@ function App() {
     const timer = setInterval(() => {
       setFeedbackProgress(prev => {
         if (prev >= PROGRESS_CAP) return prev
-        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+        const step = Math.max((PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION, PROGRESS_MIN_STEP)
+        return Math.min(prev + step, PROGRESS_CAP)
       })
     }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
@@ -491,7 +495,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.11</p>
+      <p style={styles.version}>v0.11b</p>
     </div>
   )
 }
