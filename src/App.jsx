@@ -4,20 +4,11 @@ import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
 import { computeClassSummary, formatSummaryForPrompt, extractStudentsForFeedback } from './classUtils'
 
-const WCF_MESSAGES = [
-  'Parsing student results...',
-  'Calculating question averages...',
-  'Identifying misconceptions...',
-  'Drafting feedback sections...',
-  'Almost done...',
-]
-
-const INDIVIDUAL_MESSAGES = [
-  'Analysing individual performance...',
-  'Writing personalised feedback...',
-  'Preparing student comments...',
-  'Almost done...',
-]
+// How far to advance per 250 ms tick as a fraction of the remaining gap to 90%.
+// 0.04 means "close 4% of the remaining gap each tick" — gives a natural deceleration.
+const PROGRESS_STEP_FRACTION = 0.04
+const PROGRESS_TICK_MS = 250
+const PROGRESS_CAP = 90
 
 function App() {
   // Shared state — both features read from studentData
@@ -40,31 +31,55 @@ function App() {
   const [wcfLoading, setWcfLoading] = useState(false)
   const [wcfError, setWcfError] = useState('')
 
-  // Loading message cycling
-  const [wcfMessage, setWcfMessage] = useState('')
-  const [feedbackMessage, setFeedbackMessage] = useState('')
+  // Progress bars (0-100)
+  const [wcfProgress, setWcfProgress] = useState(0)
+  const [feedbackProgress, setFeedbackProgress] = useState(0)
+
+  // Which output panel is currently visible: null | 'wcf' | 'individual'
+  const [activeOutput, setActiveOutput] = useState(null)
 
   useEffect(() => {
-    if (!wcfLoading) { setWcfMessage(''); return }
-    let i = 0
-    setWcfMessage(WCF_MESSAGES[0])
+    if (!wcfLoading) { setWcfProgress(0); return }
+    setWcfProgress(0)
     const timer = setInterval(() => {
-      i = (i + 1) % WCF_MESSAGES.length
-      setWcfMessage(WCF_MESSAGES[i])
-    }, 2000)
+      setWcfProgress(prev => {
+        if (prev >= PROGRESS_CAP) return prev
+        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+      })
+    }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
   }, [wcfLoading])
 
   useEffect(() => {
-    if (!feedbackLoading) { setFeedbackMessage(''); return }
-    let i = 0
-    setFeedbackMessage(INDIVIDUAL_MESSAGES[0])
+    if (!feedbackLoading) { setFeedbackProgress(0); return }
+    setFeedbackProgress(0)
     const timer = setInterval(() => {
-      i = (i + 1) % INDIVIDUAL_MESSAGES.length
-      setFeedbackMessage(INDIVIDUAL_MESSAGES[i])
-    }, 2000)
+      setFeedbackProgress(prev => {
+        if (prev >= PROGRESS_CAP) return prev
+        return prev + (PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION
+      })
+    }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
   }, [feedbackLoading])
+
+  // ─── Reset ────────────────────────────────────────────────────────────────
+
+  function handleReset() {
+    if (!window.confirm('This will clear all results. Are you sure?')) return
+    setStudentData(null)
+    setExamBoard('')
+    setSubject('')
+    setTopic('')
+    setGradeBoundaries('')
+    setFeedbackData(null)
+    setFeedbackLoading(false)
+    setFeedbackError('')
+    setFeedbackSuccess(false)
+    setWcfData(null)
+    setWcfLoading(false)
+    setWcfError('')
+    setActiveOutput(null)
+  }
 
   // ─── Shared validation ────────────────────────────────────────────────────
 
@@ -81,6 +96,9 @@ function App() {
   // ─── Feature 1: Individual Feedback ──────────────────────────────────────
 
   async function handleGenerateFeedback() {
+    setActiveOutput('individual')
+    setWcfData(null)
+    setWcfError('')
     setFeedbackError('')
     setFeedbackData(null)
     setFeedbackSuccess(false)
@@ -88,14 +106,19 @@ function App() {
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
 
-    const students = extractStudentsForFeedback(studentData)
-    if (!students || students.length === 0) {
+    const rawStudents = extractStudentsForFeedback(studentData)
+    if (!rawStudents || rawStudents.length === 0) {
       setFeedbackError('Could not extract student data from the uploaded file.')
       return
     }
 
+    const students = rawStudents.map(s => ({ ...s, completed: s.total > 0 }))
+
     const studentList = students
-      .map(s => `${s.name} — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
+      .map(s => s.completed
+        ? `${s.name} [completed: true] — ${s.total}/${s.maxTotal} — ${s.breakdown}`
+        : `${s.name} [completed: false]`
+      )
       .join('\n')
 
     const userPrompt = `Exam Board: ${examBoard}
@@ -104,6 +127,8 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 
 Student data (Name — Total score — Per-question scores where 1=correct 0=incorrect):
 ${studentList}
+
+IMPORTANT: Students marked [completed: false] did not submit their work. For these students only, write a single short sentence in the "www" field noting that no submission was recorded. Set "ebi" and "to_improve" to "" (empty strings). Set "score" to "Did not submit". They must still appear in the JSON array.
 
 Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text — just the JSON array.
 
@@ -117,7 +142,7 @@ Return ONLY a valid JSON array. No preamble, no markdown fences, no extra text �
   }
 ]
 
-Generate personalised WWW / EBI / To Improve feedback for every student. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
+Generate personalised WWW / EBI / To Improve feedback for every student who completed the work. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
     setFeedbackLoading(true)
     try {
@@ -137,6 +162,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
         setFeedbackError(err.message)
       }
     } finally {
+      setFeedbackProgress(100)
       setFeedbackLoading(false)
     }
   }
@@ -157,7 +183,9 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
     ]
 
     feedbackData.forEach((student, idx) => {
-      const nameText = student.score
+      const isNonCompleter = !student.ebi && !student.to_improve
+
+      const nameText = student.score && student.score !== 'Did not submit'
         ? `${student.name}  —  ${student.score}`
         : student.name
 
@@ -167,28 +195,40 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
           children: [new TextRun({ text: nameText, bold: true })],
           spacing: { before: idx === 0 ? 0 : 200, after: 160 },
         }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'WWW: ', bold: true }),
-            new TextRun({ text: student.www ?? '' }),
-          ],
-          spacing: { after: 120 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'EBI: ', bold: true }),
-            new TextRun({ text: student.ebi ?? '' }),
-          ],
-          spacing: { after: 120 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'To Improve: ', bold: true }),
-            new TextRun({ text: student.to_improve ?? '' }),
-          ],
-          spacing: { after: 200 },
-        }),
       )
+
+      if (isNonCompleter) {
+        docChildren.push(
+          new Paragraph({
+            children: [new TextRun({ text: student.www ?? 'No submission recorded.', italics: true })],
+            spacing: { after: 200 },
+          }),
+        )
+      } else {
+        docChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'WWW: ', bold: true }),
+              new TextRun({ text: student.www ?? '' }),
+            ],
+            spacing: { after: 120 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'EBI: ', bold: true }),
+              new TextRun({ text: student.ebi ?? '' }),
+            ],
+            spacing: { after: 120 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'To Improve: ', bold: true }),
+              new TextRun({ text: student.to_improve ?? '' }),
+            ],
+            spacing: { after: 200 },
+          }),
+        )
+      }
 
       if (idx < feedbackData.length - 1) {
         docChildren.push(new Paragraph({ thematicBreak: true, spacing: { after: 200 } }))
@@ -211,6 +251,10 @@ Generate personalised WWW / EBI / To Improve feedback for every student. Use the
   // ─── Feature 2: Whole Class Feedback Sheet ────────────────────────────────
 
   async function handleGenerateWCF() {
+    setActiveOutput('wcf')
+    setFeedbackData(null)
+    setFeedbackError('')
+    setFeedbackSuccess(false)
     setWcfError('')
     setWcfData(null)
 
@@ -263,6 +307,7 @@ Base your analysis on the question averages and student performance data provide
         setWcfError(err.message)
       }
     } finally {
+      setWcfProgress(100)
       setWcfLoading(false)
     }
   }
@@ -360,6 +405,17 @@ Base your analysis on the question averages and student performance data provide
           {/* Shared upload — both buttons use the same parsed data */}
           <FileUpload onDataParsed={setStudentData} />
 
+          {/* Start Over — only visible once a file has been uploaded */}
+          {studentData && (
+            <button
+              style={{ ...styles.button, ...styles.buttonReset }}
+              type="button"
+              onClick={handleReset}
+            >
+              Start Over
+            </button>
+          )}
+
           {/* Two output buttons */}
           <div style={styles.buttonRow}>
             <button
@@ -368,7 +424,7 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateWCF}
               disabled={wcfLoading}
             >
-              {wcfLoading ? (wcfMessage || 'Generating…') : 'Generate Class Feedback Sheet'}
+              {wcfLoading ? 'Generating…' : 'Generate Class Feedback Sheet'}
             </button>
 
             <button
@@ -377,19 +433,37 @@ Base your analysis on the question averages and student performance data provide
               onClick={handleGenerateFeedback}
               disabled={feedbackLoading}
             >
-              {feedbackLoading ? (feedbackMessage || 'Generating…') : 'Generate Individual Feedback'}
+              {feedbackLoading ? 'Generating…' : 'Generate Individual Feedback'}
             </button>
           </div>
+
+          {/* WCF progress bar */}
+          {wcfLoading && (
+            <div>
+              <div style={styles.progressTrack}>
+                <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+              </div>
+              <p style={styles.progressLabel}>Analysing class data…</p>
+            </div>
+          )}
+
+          {/* Individual feedback progress bar */}
+          {feedbackLoading && (
+            <div>
+              <div style={styles.progressTrack}>
+                <div style={{ ...styles.progressBar, width: `${feedbackProgress}%` }} />
+              </div>
+              <p style={styles.progressLabel}>Writing personalised feedback…</p>
+            </div>
+          )}
         </div>
 
-        {/* WCF errors */}
+        {/* Errors — always shown regardless of active output */}
         {wcfError && <p style={styles.errorText}>{wcfError}</p>}
-
-        {/* Individual feedback errors */}
         {feedbackError && <p style={styles.errorText}>{feedbackError}</p>}
 
-        {/* WCF output */}
-        {wcfData && (
+        {/* Single output panel — only one renders at a time */}
+        {activeOutput === 'wcf' && wcfData && (
           <WCFSheet
             data={wcfData}
             examBoard={examBoard}
@@ -398,8 +472,7 @@ Base your analysis on the question averages and student performance data provide
           />
         )}
 
-        {/* Individual feedback — download panel */}
-        {feedbackData && (
+        {activeOutput === 'individual' && feedbackData && (
           <div style={styles.outputBox}>
             <h3 style={styles.outputHeading}>Individual Student Feedback Ready</h3>
             <p style={styles.outputMeta}>
@@ -418,7 +491,7 @@ Base your analysis on the question averages and student performance data provide
           </div>
         )}
       </div>
-      <p style={styles.version}>v0.10</p>
+      <p style={styles.version}>v0.11</p>
     </div>
   )
 }
@@ -518,6 +591,16 @@ const styles = {
     backgroundColor: '#f3f4f6',
     color: '#374151',
   },
+  buttonReset: {
+    flex: 'none',
+    minWidth: 'unset',
+    width: '100%',
+    backgroundColor: '#fff',
+    color: '#6b7280',
+    border: '1px solid #d1d5db',
+    fontSize: '13px',
+    fontWeight: '500',
+  },
   errorText: {
     marginTop: '16px',
     fontSize: '14px',
@@ -544,6 +627,24 @@ const styles = {
   outputMeta: {
     margin: '0 0 16px',
     fontSize: '14px',
+    color: '#6b7280',
+  },
+  progressTrack: {
+    height: '6px',
+    borderRadius: '3px',
+    backgroundColor: '#e5e7eb',
+    overflow: 'hidden',
+    marginTop: '4px',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: '3px',
+    backgroundColor: '#4f46e5',
+    transition: 'width 0.25s ease-out',
+  },
+  progressLabel: {
+    margin: '6px 0 0',
+    fontSize: '12px',
     color: '#6b7280',
   },
   version: {
