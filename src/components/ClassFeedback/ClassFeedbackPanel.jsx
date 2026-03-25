@@ -2,7 +2,9 @@
  * WCFSheet — renders the Whole Class Feedback sheet from the structured JSON
  * returned by Claude. Six sections matching the school WCF template.
  */
-export default function WCFSheet({ data, examBoard, subject, topic }) {
+import FeedbackSection from './FeedbackSection'
+
+export default function ClassFeedbackPanel({ data, examBoard, subject, topic }) {
   const today = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -33,7 +35,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         </div>
 
         {/* Section 1: Key Successes */}
-        <Section
+        <FeedbackSection
           number="1"
           title="Key Successes"
           color="#166534"
@@ -43,7 +45,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         />
 
         {/* Section 2: Key Misconceptions */}
-        <Section
+        <FeedbackSection
           number="2"
           title="Key Misconceptions & Reteach Actions"
           color="#9a3412"
@@ -53,7 +55,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         />
 
         {/* Section 3: Individual Student Concerns */}
-        <Section
+        <FeedbackSection
           number="3"
           title="Individual Student Concerns"
           color="#1e40af"
@@ -63,7 +65,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         />
 
         {/* Section 4: Little Errors */}
-        <Section
+        <FeedbackSection
           number="4"
           title="Little Errors (Command Words, Units, Spelling)"
           color="#6b21a8"
@@ -73,7 +75,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         />
 
         {/* Section 5: Students to Praise */}
-        <Section
+        <FeedbackSection
           number="5"
           title="Students to Praise"
           color="#065f46"
@@ -83,7 +85,7 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
         />
 
         {/* Section 6: Long-term Implications */}
-        <Section
+        <FeedbackSection
           number="6"
           title="Long-term Implications (Scheme of Work)"
           color="#7c2d12"
@@ -95,28 +97,6 @@ export default function WCFSheet({ data, examBoard, subject, topic }) {
 
       {/* Print styles injected inline so they work without a CSS file */}
       <style>{printStyles}</style>
-    </div>
-  )
-}
-
-function Section({ number, title, color, bg, border, items }) {
-  const list = Array.isArray(items) ? items : (items ? [items] : [])
-
-  return (
-    <div style={{ ...styles.section, backgroundColor: bg, borderColor: border }}>
-      <div style={styles.sectionHeader}>
-        <span style={{ ...styles.sectionNumber, backgroundColor: color }}>{number}</span>
-        <h2 style={{ ...styles.sectionTitle, color }}>{title}</h2>
-      </div>
-      {list.length > 0 ? (
-        <ul style={styles.list}>
-          {list.map((item, i) => (
-            <li key={i} style={styles.listItem}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p style={styles.empty}>No items identified.</p>
-      )}
     </div>
   )
 }
@@ -167,52 +147,6 @@ const styles = {
   },
   date: {
     color: '#9ca3af',
-  },
-  section: {
-    margin: '0',
-    padding: '20px 28px',
-    borderTop: '1px solid',
-  },
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    marginBottom: '12px',
-  },
-  sectionNumber: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '24px',
-    height: '24px',
-    borderRadius: '50%',
-    color: '#fff',
-    fontSize: '12px',
-    fontWeight: '700',
-    flexShrink: 0,
-  },
-  sectionTitle: {
-    margin: '0',
-    fontSize: '15px',
-    fontWeight: '700',
-  },
-  list: {
-    margin: '0',
-    paddingLeft: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  listItem: {
-    fontSize: '14px',
-    lineHeight: '1.5',
-    color: '#374151',
-  },
-  empty: {
-    margin: '0',
-    fontSize: '13px',
-    color: '#9ca3af',
-    fontStyle: 'italic',
   },
 }
 
