@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import FileUpload from './FileUpload'
 import WCFSheet from './WCFSheet'
-import { computeClassSummary, formatSummaryForPrompt, extractStudentsForFeedback } from './classUtils'
+import { extractStudentsForFeedback } from './classUtils'
+import { useClassFeedback } from './hooks/useClassFeedback'
 
 // Each tick, advance by max(fraction × remaining gap, min step).
 // Lower fraction slows the initial rush; the min step floor keeps the bar
@@ -28,30 +29,11 @@ function App() {
   const [feedbackError, setFeedbackError] = useState('')
   const [feedbackSuccess, setFeedbackSuccess] = useState(false)
 
-  // WCF state
-  const [wcfData, setWcfData] = useState(null)
-  const [wcfLoading, setWcfLoading] = useState(false)
-  const [wcfError, setWcfError] = useState('')
-
   // Progress bars (0-100)
-  const [wcfProgress, setWcfProgress] = useState(0)
   const [feedbackProgress, setFeedbackProgress] = useState(0)
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
-
-  useEffect(() => {
-    if (!wcfLoading) { setWcfProgress(0); return }
-    setWcfProgress(0)
-    const timer = setInterval(() => {
-      setWcfProgress(prev => {
-        if (prev >= PROGRESS_CAP) return prev
-        const step = Math.max((PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION, PROGRESS_MIN_STEP)
-        return Math.min(prev + step, PROGRESS_CAP)
-      })
-    }, PROGRESS_TICK_MS)
-    return () => clearInterval(timer)
-  }, [wcfLoading])
 
   useEffect(() => {
     if (!feedbackLoading) { setFeedbackProgress(0); return }
@@ -65,6 +47,61 @@ function App() {
     }, PROGRESS_TICK_MS)
     return () => clearInterval(timer)
   }, [feedbackLoading])
+
+  // ─── Shared Claude API helper ─────────────────────────────────────────────
+
+  async function callClaude(systemPrompt, userPrompt, maxTokens) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+
+    if (!response.ok) {
+      const errBody = await response.text()
+      throw new Error(`API error ${response.status}: ${errBody}`)
+    }
+
+    return response.json()
+  }
+
+  // ─── Shared validation ────────────────────────────────────────────────────
+
+  function validateInputs() {
+    if (!studentData || studentData.length === 0) {
+      return 'Please upload an Excel file with student data first.'
+    }
+    if (!examBoard || !subject || !topic) {
+      return 'Please fill in Exam Board, Subject, and Topic.'
+    }
+    return null
+  }
+
+  // ─── Feature 2: Whole Class Feedback Sheet (hook) ─────────────────────────
+
+  const { wcfData, setWcfData, wcfLoading, wcfError, setWcfError, wcfProgress, handleGenerateWCF } = useClassFeedback({
+    examBoard,
+    subject,
+    topic,
+    gradeBoundaries,
+    studentData,
+    validateInputs,
+    callClaude,
+    setActiveOutput,
+    setFeedbackData,
+    setFeedbackError,
+    setFeedbackSuccess,
+  })
 
   // ─── Reset ────────────────────────────────────────────────────────────────
 
@@ -80,21 +117,8 @@ function App() {
     setFeedbackError('')
     setFeedbackSuccess(false)
     setWcfData(null)
-    setWcfLoading(false)
     setWcfError('')
     setActiveOutput(null)
-  }
-
-  // ─── Shared validation ────────────────────────────────────────────────────
-
-  function validateInputs() {
-    if (!studentData || studentData.length === 0) {
-      return 'Please upload an Excel file with student data first.'
-    }
-    if (!examBoard || !subject || !topic) {
-      return 'Please fill in Exam Board, Subject, and Topic.'
-    }
-    return null
   }
 
   // ─── Feature 1: Individual Feedback ──────────────────────────────────────
@@ -250,97 +274,6 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     setFeedbackSuccess(true)
-  }
-
-  // ─── Feature 2: Whole Class Feedback Sheet ────────────────────────────────
-
-  async function handleGenerateWCF() {
-    setActiveOutput('wcf')
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
-    setWcfError('')
-    setWcfData(null)
-
-    const err = validateInputs()
-    if (err) { setWcfError(err); return }
-
-    const summary = computeClassSummary(studentData)
-    if (!summary) {
-      setWcfError('Could not compute class summary from the uploaded data.')
-      return
-    }
-
-    const summaryText = formatSummaryForPrompt(summary)
-
-    const userPrompt = `Exam Board: ${examBoard}
-Subject: ${subject}
-Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}
-
-Class data summary:
-${summaryText}
-
-Generate a Whole Class Feedback sheet. Return ONLY a valid JSON object with exactly these six keys. No preamble, no markdown fences, no extra text — just the JSON.
-
-{
-  "key_successes": ["array of bullet-point strings describing what the class did well"],
-  "key_misconceptions": ["array of bullet-point strings, each describing a misconception and a suggested reteach action"],
-  "individual_concerns": ["array of strings, each naming a specific student and their concern — use the student names from the data"],
-  "little_errors": ["array of bullet-point strings about small mistakes: command words, units, spelling, working out"],
-  "students_to_praise": ["array of strings, each naming a student and why they should be praised"],
-  "long_term_implications": ["array of bullet-point strings about scheme-of-work or teaching changes to make"]
-}
-
-Base your analysis on the question averages and student performance data provided. Be specific and curriculum-relevant for ${examBoard} ${subject}.`
-
-    setWcfLoading(true)
-    try {
-      const data = await callClaude(
-        'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a structured Whole Class Feedback sheet as a JSON object. Return only valid JSON with no markdown fences.',
-        userPrompt,
-        4000
-      )
-      let rawText = data.content?.[0]?.text ?? ''
-      rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()
-      const parsed = JSON.parse(rawText)
-      setWcfData(parsed)
-    } catch (err) {
-      if (err instanceof SyntaxError) {
-        setWcfError('The AI returned an unexpected format. Please try again.')
-      } else {
-        setWcfError(err.message)
-      }
-    } finally {
-      setWcfProgress(100)
-      setWcfLoading(false)
-    }
-  }
-
-  // ─── Shared Claude API helper ─────────────────────────────────────────────
-
-  async function callClaude(systemPrompt, userPrompt, maxTokens) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    })
-
-    if (!response.ok) {
-      const errBody = await response.text()
-      throw new Error(`API error ${response.status}: ${errBody}`)
-    }
-
-    return response.json()
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
