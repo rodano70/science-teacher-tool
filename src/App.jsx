@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import FileUpload from './FileUpload'
-import WCFSheet from './WCFSheet'
+import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 
@@ -251,7 +251,7 @@ function App() {
 
         {/* Single output panel — only one renders at a time */}
         {activeOutput === 'wcf' && wcfData && (
-          <WCFSheet
+          <ClassFeedbackPanel
             data={wcfData}
             examBoard={examBoard}
             subject={subject}
