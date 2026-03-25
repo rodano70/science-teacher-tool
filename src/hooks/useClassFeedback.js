@@ -18,9 +18,6 @@ export function useClassFeedback({
   validateInputs,
   callClaude,
   setActiveOutput,
-  setFeedbackData,
-  setFeedbackError,
-  setFeedbackSuccess,
 }) {
   const [wcfData, setWcfData] = useState(null)
   const [wcfLoading, setWcfLoading] = useState(false)
@@ -42,9 +39,6 @@ export function useClassFeedback({
 
   async function handleGenerateWCF() {
     setActiveOutput('wcf')
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
     setWcfError('')
     setWcfData(null)
 
