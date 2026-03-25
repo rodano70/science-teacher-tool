@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import FileUpload from './FileUpload'
 import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
+import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
 import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 
@@ -260,22 +261,11 @@ function App() {
         )}
 
         {activeOutput === 'individual' && feedbackData && (
-          <div style={styles.outputBox}>
-            <h3 style={styles.outputHeading}>Individual Student Feedback Ready</h3>
-            <p style={styles.outputMeta}>
-              Feedback generated for {feedbackData.length} student{feedbackData.length !== 1 ? 's' : ''}.
-            </p>
-            <button
-              style={{ ...styles.button, ...styles.buttonPrimary, maxWidth: '320px' }}
-              type="button"
-              onClick={handleDownloadWordDoc}
-            >
-              Download Feedback as Word Document
-            </button>
-            {feedbackSuccess && (
-              <p style={styles.successText}>Document downloaded successfully.</p>
-            )}
-          </div>
+          <IndividualFeedbackPanel
+            feedbackData={feedbackData}
+            feedbackSuccess={feedbackSuccess}
+            onDownload={handleDownloadWordDoc}
+          />
         )}
       </div>
       <p style={styles.version}>v0.12</p>
@@ -392,29 +382,6 @@ const styles = {
     marginTop: '16px',
     fontSize: '14px',
     color: '#ef4444',
-  },
-  successText: {
-    marginTop: '12px',
-    fontSize: '14px',
-    color: '#16a34a',
-  },
-  outputBox: {
-    marginTop: '32px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    backgroundColor: '#f9fafb',
-    padding: '20px',
-  },
-  outputHeading: {
-    margin: '0 0 8px',
-    fontSize: '15px',
-    fontWeight: '700',
-    color: '#1a1a2e',
-  },
-  outputMeta: {
-    margin: '0 0 16px',
-    fontSize: '14px',
-    color: '#6b7280',
   },
   progressTrack: {
     height: '6px',
