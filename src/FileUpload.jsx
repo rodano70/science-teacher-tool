@@ -31,18 +31,28 @@ export default function FileUpload({ onDataParsed }) {
   return (
     <div style={styles.field}>
       <label style={styles.label}>Student Results (Excel)</label>
-      <label style={styles.uploadButton}>
+      <label className={`upload-zone${fileName ? ' has-file' : ''}`}>
         <input
           type="file"
           accept=".xlsx,.xls"
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
-        {fileName || 'Upload Excel file'}
+        {fileName ? (
+          <span>
+            <span style={styles.fileIcon}>&#10003;</span>{' '}
+            {fileName}
+          </span>
+        ) : (
+          <span>
+            <span style={styles.uploadIcon}>&#8679;</span>{' '}
+            Click to upload Excel file (.xlsx, .xls)
+          </span>
+        )}
       </label>
       {rowCount !== null && (
         <p style={styles.parsedNote}>
-          {rowCount} student row{rowCount !== 1 ? 's' : ''} parsed from Excel.
+          {rowCount} student row{rowCount !== 1 ? 's' : ''} parsed successfully.
         </p>
       )}
     </div>
@@ -56,25 +66,22 @@ const styles = {
     gap: '6px',
   },
   label: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
     color: '#374151',
+    letterSpacing: '0.01em',
   },
-  uploadButton: {
-    display: 'inline-block',
-    padding: '10px 16px',
-    borderRadius: '8px',
-    border: '1px dashed #d1d5db',
-    fontSize: '14px',
-    color: '#6b7280',
-    cursor: 'pointer',
-    textAlign: 'center',
-    backgroundColor: '#f9fafb',
-    transition: 'background-color 0.15s',
+  fileIcon: {
+    fontWeight: '700',
+  },
+  uploadIcon: {
+    fontSize: '18px',
+    lineHeight: 1,
   },
   parsedNote: {
     margin: '0',
-    fontSize: '13px',
-    color: '#10b981',
+    fontSize: '12px',
+    color: '#15803d',
+    fontWeight: '500',
   },
 }

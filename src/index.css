@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ── Custom properties ───────────────────────────────────────────────────── */
+
+:root {
+  /* Colour */
+  --c-primary:       #1d4ed8;
+  --c-primary-dark:  #1a44c2;
+  --c-bg:            #f8f9fa;
+  --c-surface:       #ffffff;
+  --c-border:        #dee2e6;
+  --c-border-input:  #d1d5db;
+  --c-text:          #111827;
+  --c-text-secondary:#4b5563;
+  --c-text-muted:    #6b7280;
+  --c-success:       #15803d;
+  --c-error:         #b91c1c;
+
+  /* Spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Typography */
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-md:   15px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+
+  /* Radii */
+  --r-sm: 3px;
+  --r:    5px;
+  --r-md: 6px;
+  --r-lg: 8px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+
+body {
+  margin: 0;
+  background-color: var(--c-bg);
+  font-family: var(--font);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Inherit font in form elements */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* ── Transitions ─────────────────────────────────────────────────────────── */
+
+button,
+input,
+select,
+.upload-zone {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+
+/* ── Focus ───────────────────────────────────────────────────────────────── */
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 1px;
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+/* ── Button hover states ─────────────────────────────────────────────────── */
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--c-primary-dark) !important;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f0f4f8 !important;
+  border-color: #9ca3af !important;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: #f0f4f8 !important;
+  color: #374151 !important;
+}
+
+.btn-print:hover:not(:disabled) {
+  background-color: #1f2937 !important;
+}
+
+.btn-download:hover:not(:disabled) {
+  background-color: var(--c-primary-dark) !important;
+}
+
+/* ── Upload zone ─────────────────────────────────────────────────────────── */
+
+.upload-zone {
+  display: block;
+  width: 100%;
+  padding: 20px 16px;
+  border: 2px dashed #ced4da;
+  border-radius: var(--r-md);
+  background-color: #fafbfc;
+  font-size: var(--text-base);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.upload-zone:hover {
+  background-color: #eff6ff;
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+.upload-zone.has-file {
+  background-color: #f0fdf4;
+  border-color: #6ee7b7;
+  color: var(--c-success);
+  border-style: solid;
+}
+
+/* ── Print ───────────────────────────────────────────────────────────────── */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  #wcf-sheet {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}

@@ -2,10 +2,10 @@ export default function FeedbackSection({ number, title, color, bg, border, item
   const list = Array.isArray(items) ? items : (items ? [items] : [])
 
   return (
-    <div style={{ ...styles.section, backgroundColor: bg, borderColor: border }}>
+    <div style={{ ...styles.section, backgroundColor: bg, borderTopColor: border }}>
       <div style={styles.sectionHeader}>
         <span style={{ ...styles.sectionNumber, backgroundColor: color }}>{number}</span>
-        <h2 style={{ ...styles.sectionTitle, color }}>{title}</h2>
+        <h3 style={{ ...styles.sectionTitle, color }}>{title}</h3>
       </div>
       {list.length > 0 ? (
         <ul style={styles.list}>
@@ -22,43 +22,43 @@ export default function FeedbackSection({ number, title, color, bg, border, item
 
 const styles = {
   section: {
-    margin: '0',
-    padding: '20px 28px',
+    padding: '18px 24px',
     borderTop: '1px solid',
   },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    marginBottom: '12px',
+    marginBottom: '10px',
   },
   sectionNumber: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '24px',
-    height: '24px',
+    width: '22px',
+    height: '22px',
     borderRadius: '50%',
     color: '#fff',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: '700',
     flexShrink: 0,
   },
   sectionTitle: {
     margin: '0',
-    fontSize: '15px',
+    fontSize: '14px',
     fontWeight: '700',
+    letterSpacing: '0.01em',
   },
   list: {
     margin: '0',
-    paddingLeft: '20px',
+    paddingLeft: '18px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '5px',
   },
   listItem: {
-    fontSize: '14px',
-    lineHeight: '1.5',
+    fontSize: '13px',
+    lineHeight: '1.55',
     color: '#374151',
   },
   empty: {

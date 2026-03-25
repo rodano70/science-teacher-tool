@@ -19,7 +19,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic }) 
     <div style={styles.wrapper}>
       {/* Print button — hidden when actually printing via @media print */}
       <div style={styles.printBar} className="no-print">
-        <button style={styles.printButton} onClick={handlePrint}>
+        <button className="btn-print" style={styles.printButton} onClick={handlePrint}>
           Print / Save as PDF
         </button>
       </div>
@@ -27,7 +27,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic }) 
       <div style={styles.sheet} id="wcf-sheet">
         {/* Header */}
         <div style={styles.header}>
-          <h1 style={styles.title}>Whole Class Feedback Sheet</h1>
+          <h2 style={styles.title}>Whole Class Feedback Sheet</h2>
           <div style={styles.meta}>
             <span>{examBoard} {subject} — {topic}</span>
             <span style={styles.date}>{today}</span>
@@ -94,9 +94,6 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic }) 
           items={data.long_term_implications}
         />
       </div>
-
-      {/* Print styles injected inline so they work without a CSS file */}
-      <style>{printStyles}</style>
     </div>
   )
 }
@@ -104,59 +101,52 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic }) 
 const styles = {
   wrapper: {
     marginTop: '32px',
+    borderTop: '1px solid #f3f4f6',
+    paddingTop: '28px',
   },
   printBar: {
     display: 'flex',
     justifyContent: 'flex-end',
-    marginBottom: '12px',
+    marginBottom: '14px',
   },
   printButton: {
-    padding: '10px 20px',
-    borderRadius: '8px',
+    padding: '9px 20px',
+    borderRadius: '5px',
     border: 'none',
     backgroundColor: '#374151',
     color: '#fff',
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer',
+    letterSpacing: '0.01em',
   },
   sheet: {
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
-    borderRadius: '10px',
+    borderRadius: '8px',
     overflow: 'hidden',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
   },
   header: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1e3150',
     color: '#ffffff',
-    padding: '24px 28px',
+    padding: '20px 24px',
   },
   title: {
-    margin: '0 0 8px',
-    fontSize: '20px',
+    margin: '0 0 6px',
+    fontSize: '17px',
     fontWeight: '700',
-    letterSpacing: '0.3px',
+    letterSpacing: '0.01em',
   },
   meta: {
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '13px',
-    color: '#d1d5db',
+    color: '#93c5fd',
     flexWrap: 'wrap',
     gap: '8px',
   },
   date: {
-    color: '#9ca3af',
+    color: '#7dd3fc',
   },
 }
-
-const printStyles = `
-  @media print {
-    .no-print { display: none !important; }
-    body { background: white !important; }
-    #wcf-sheet {
-      border: none !important;
-      border-radius: 0 !important;
-    }
-  }
-`

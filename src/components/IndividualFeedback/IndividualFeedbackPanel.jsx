@@ -2,22 +2,31 @@ import StudentCard from './StudentCard'
 
 export default function IndividualFeedbackPanel({ feedbackData, feedbackSuccess, onDownload }) {
   return (
-    <div style={styles.outputBox}>
-      <h3 style={styles.outputHeading}>Individual Student Feedback Ready</h3>
-      <p style={styles.outputMeta}>
-        Feedback generated for {feedbackData.length} student{feedbackData.length !== 1 ? 's' : ''}.
-      </p>
-      <button
-        style={{ ...styles.button, ...styles.buttonPrimary, maxWidth: '320px' }}
-        type="button"
-        onClick={onDownload}
-      >
-        Download Feedback as Word Document
-      </button>
-      {feedbackSuccess && (
-        <p style={styles.successText}>Document downloaded successfully.</p>
-      )}
+    <div style={styles.wrapper}>
+      {/* Panel header */}
+      <div style={styles.panelHeader}>
+        <div>
+          <h3 style={styles.panelTitle}>Individual Student Feedback</h3>
+          <p style={styles.panelMeta}>
+            {feedbackData.length} student{feedbackData.length !== 1 ? 's' : ''} — feedback ready to download
+          </p>
+        </div>
+        <div style={styles.downloadArea}>
+          <button
+            className="btn-download"
+            style={styles.downloadButton}
+            type="button"
+            onClick={onDownload}
+          >
+            Download as Word Document
+          </button>
+          {feedbackSuccess && (
+            <p style={styles.successNote}>Document downloaded.</p>
+          )}
+        </div>
+      </div>
 
+      {/* Student cards */}
       <div style={styles.cardList}>
         {feedbackData.map((student, i) => (
           <StudentCard key={i} student={student} />
@@ -28,47 +37,57 @@ export default function IndividualFeedbackPanel({ feedbackData, feedbackSuccess,
 }
 
 const styles = {
-  outputBox: {
+  wrapper: {
     marginTop: '32px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    backgroundColor: '#f9fafb',
-    padding: '20px',
+    borderTop: '1px solid #f3f4f6',
+    paddingTop: '28px',
   },
-  outputHeading: {
-    margin: '0 0 8px',
-    fontSize: '15px',
+  panelHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '16px',
+    marginBottom: '20px',
+  },
+  panelTitle: {
+    margin: '0 0 4px',
+    fontSize: '16px',
     fontWeight: '700',
-    color: '#1a1a2e',
+    color: '#111827',
   },
-  outputMeta: {
-    margin: '0 0 16px',
-    fontSize: '14px',
+  panelMeta: {
+    margin: '0',
+    fontSize: '13px',
     color: '#6b7280',
   },
-  button: {
-    flex: '1',
-    minWidth: '200px',
-    padding: '12px',
-    borderRadius: '8px',
-    border: 'none',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  buttonPrimary: {
-    backgroundColor: '#4f46e5',
-    color: '#ffffff',
-  },
-  successText: {
-    marginTop: '12px',
-    fontSize: '14px',
-    color: '#16a34a',
-  },
-  cardList: {
-    marginTop: '20px',
+  downloadArea: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    alignItems: 'flex-end',
+    gap: '6px',
+  },
+  downloadButton: {
+    padding: '9px 18px',
+    borderRadius: '5px',
+    border: 'none',
+    backgroundColor: '#1d4ed8',
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    letterSpacing: '0.01em',
+  },
+  successNote: {
+    margin: '0',
+    fontSize: '12px',
+    color: '#15803d',
+    fontWeight: '500',
+  },
+  cardList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
   },
 }

@@ -131,44 +131,65 @@ function App() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.heading}>UK Science Teacher Tool</h1>
-        <p style={styles.subheading}>Upload once — generate class feedback and individual student feedback</p>
+      {/* App header — full-width band */}
+      <header style={styles.appHeader}>
+        <div style={styles.headerInner}>
+          <h1 style={styles.appTitle}>UK Science Teacher Tool</h1>
+          <p style={styles.appSubtitle}>
+            Upload class results — generate whole-class and individual student feedback
+          </p>
+        </div>
+      </header>
 
-        <UploadPanel
-          examBoard={examBoard} setExamBoard={setExamBoard}
-          subject={subject} setSubject={setSubject}
-          topic={topic} setTopic={setTopic}
-          gradeBoundaries={gradeBoundaries} setGradeBoundaries={setGradeBoundaries}
-          studentData={studentData}
-          onDataParsed={setStudentData}
-          onReset={handleReset}
-          wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
-          feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
-        />
-
-        {/* Errors — always shown regardless of active output */}
-        {wcfError && <p style={styles.errorText}>{wcfError}</p>}
-        {feedbackError && <p style={styles.errorText}>{feedbackError}</p>}
-
-        {/* Single output panel — only one renders at a time */}
-        {activeOutput === 'wcf' && wcfData && (
-          <ClassFeedbackPanel
-            data={wcfData}
-            examBoard={examBoard}
-            subject={subject}
-            topic={topic}
+      {/* Main content */}
+      <main style={styles.main}>
+        <div style={styles.card}>
+          <UploadPanel
+            examBoard={examBoard} setExamBoard={setExamBoard}
+            subject={subject} setSubject={setSubject}
+            topic={topic} setTopic={setTopic}
+            gradeBoundaries={gradeBoundaries} setGradeBoundaries={setGradeBoundaries}
+            studentData={studentData}
+            onDataParsed={setStudentData}
+            onReset={handleReset}
+            wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
+            feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
           />
-        )}
 
-        {activeOutput === 'individual' && feedbackData && (
-          <IndividualFeedbackPanel
-            feedbackData={feedbackData}
-            feedbackSuccess={feedbackSuccess}
-            onDownload={handleDownloadWordDoc}
-          />
-        )}
-      </div>
+          {/* Errors — always shown regardless of active output */}
+          {wcfError && (
+            <div style={styles.errorBox} role="alert">
+              <span style={styles.errorIcon}>!</span>
+              {wcfError}
+            </div>
+          )}
+          {feedbackError && (
+            <div style={styles.errorBox} role="alert">
+              <span style={styles.errorIcon}>!</span>
+              {feedbackError}
+            </div>
+          )}
+
+          {/* Single output panel — only one renders at a time */}
+          {activeOutput === 'wcf' && wcfData && (
+            <ClassFeedbackPanel
+              data={wcfData}
+              examBoard={examBoard}
+              subject={subject}
+              topic={topic}
+            />
+          )}
+
+          {activeOutput === 'individual' && feedbackData && (
+            <IndividualFeedbackPanel
+              feedbackData={feedbackData}
+              feedbackSuccess={feedbackSuccess}
+              onDownload={handleDownloadWordDoc}
+            />
+          )}
+        </div>
+      </main>
+
       <p style={styles.version}>v0.12</p>
     </div>
   )
@@ -177,36 +198,66 @@ function App() {
 const styles = {
   page: {
     minHeight: '100vh',
-    backgroundColor: '#f5f7fa',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    padding: '48px 16px',
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
+  },
+  appHeader: {
+    backgroundColor: '#1e3150',
+    borderBottom: '3px solid #1d4ed8',
+  },
+  headerInner: {
+    maxWidth: '860px',
+    margin: '0 auto',
+    padding: '20px 24px',
+  },
+  appTitle: {
+    margin: '0 0 4px',
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: '-0.01em',
+  },
+  appSubtitle: {
+    margin: '0',
+    fontSize: '13px',
+    color: '#93c5fd',
+    fontWeight: '400',
+  },
+  main: {
+    maxWidth: '860px',
+    margin: '0 auto',
+    padding: '32px 24px 64px',
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    padding: '40px',
-    width: '100%',
-    maxWidth: '680px',
+    borderRadius: '8px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05)',
+    padding: '32px',
   },
-  heading: {
-    margin: '0 0 4px',
-    fontSize: '24px',
+  errorBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    marginTop: '20px',
+    padding: '12px 16px',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    fontSize: '14px',
+    color: '#b91c1c',
+    lineHeight: '1.5',
+  },
+  errorIcon: {
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    backgroundColor: '#b91c1c',
+    color: '#fff',
+    fontSize: '11px',
     fontWeight: '700',
-    color: '#1a1a2e',
-  },
-  subheading: {
-    margin: '0 0 32px',
-    fontSize: '14px',
-    color: '#6b7280',
-  },
-  errorText: {
-    marginTop: '16px',
-    fontSize: '14px',
-    color: '#ef4444',
+    marginTop: '1px',
   },
   version: {
     position: 'fixed',
@@ -215,6 +266,7 @@ const styles = {
     margin: '0',
     fontSize: '11px',
     color: '#9ca3af',
+    fontWeight: '400',
   },
 }
 
