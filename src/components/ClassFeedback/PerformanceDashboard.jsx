@@ -1,18 +1,46 @@
 import { useState } from 'react'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ReferenceLine, ResponsiveContainer, Cell,
+} from 'recharts'
 
 const TABS = ['Overview', 'Per Question', 'Score Distribution']
+
+function barColor(pct) {
+  if (pct >= 80) return '#52a97d'
+  if (pct >= 60) return '#e0993a'
+  return '#d95f5f'
+}
+
+function QuestionTooltip({ active, payload }) {
+  if (!active || !payload || payload.length === 0) return null
+  const { label, pctCorrect } = payload[0].payload
+  return (
+    <div style={tooltipStyle}>
+      <span style={{ fontWeight: 600, color: '#1e3150' }}>{label}</span>
+      <span style={{ color: barColor(pctCorrect), fontWeight: 700, marginLeft: 8 }}>
+        {pctCorrect}%
+      </span>
+    </div>
+  )
+}
 
 /**
  * PerformanceDashboard — tabbed chart panel that sits between the WCF header
  * and the six written feedback sections.
  *
  * Props:
- *   statCards       — pre-computed values for the Overview stat cards
- *   questionStats   — [{label, pctCorrect}] for the Per Question chart
+ *   statCards         — pre-computed values for the Overview stat cards
+ *   questionStats     — [{label, pctCorrect}] for the Per Question chart
  *   scoreDistribution — [{score, count}] for the Score Distribution chart
  */
 export default function PerformanceDashboard({ statCards, questionStats, scoreDistribution }) {
   const [activeTab, setActiveTab] = useState('Overview')
+
+  // Dynamic chart height — 28px per question row plus axis headroom
+  const perQChartHeight = questionStats
+    ? Math.max(280, questionStats.length * 28 + 50)
+    : 280
 
   return (
     <div style={styles.wrapper}>
@@ -32,7 +60,7 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* ── Overview ── */}
       {activeTab === 'Overview' && (
         <div style={styles.statsRow}>
           <div style={styles.statCard}>
@@ -57,18 +85,84 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
           </div>
         </div>
       )}
+
+      {/* ── Per Question ── */}
       {activeTab === 'Per Question' && (
-        <div style={styles.content}>
-          <p style={styles.placeholder}>Per-question bar chart coming in next step.</p>
+        <div style={styles.chartPanel}>
+          <p style={styles.chartTitle}>Performance by Question</p>
+          <ResponsiveContainer width="100%" height={perQChartHeight}>
+            <BarChart
+              data={questionStats}
+              layout="vertical"
+              margin={{ top: 4, right: 32, bottom: 4, left: 8 }}
+              barSize={14}
+            >
+              <CartesianGrid horizontal={false} vertical={true} stroke="#f0f0f0" strokeDasharray="3 3" />
+
+              <XAxis
+                type="number"
+                domain={[0, 100]}
+                tickCount={6}
+                tickFormatter={v => `${v}%`}
+                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
+                axisLine={{ stroke: '#e5e7eb' }}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="label"
+                width={34}
+                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
+                axisLine={false}
+                tickLine={false}
+              />
+
+              <Tooltip content={<QuestionTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
+
+              {/* Threshold reference lines */}
+              <ReferenceLine
+                x={80}
+                stroke="#52a97d"
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{ value: '80%', position: 'insideTopRight', fontSize: 10, fill: '#52a97d', dy: -4 }}
+              />
+              <ReferenceLine
+                x={60}
+                stroke="#e0993a"
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{ value: '60%', position: 'insideTopRight', fontSize: 10, fill: '#e0993a', dy: -4 }}
+              />
+
+              <Bar dataKey="pctCorrect" radius={[0, 3, 3, 0]}>
+                {questionStats.map((entry, i) => (
+                  <Cell key={i} fill={barColor(entry.pctCorrect)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
+
+      {/* ── Score Distribution ── */}
       {activeTab === 'Score Distribution' && (
-        <div style={styles.content}>
+        <div style={styles.chartPanel}>
           <p style={styles.placeholder}>Score distribution histogram coming in next step.</p>
         </div>
       )}
     </div>
   )
+}
+
+const tooltipStyle = {
+  backgroundColor: '#ffffff',
+  border: '1px solid #e5e7eb',
+  borderRadius: '6px',
+  padding: '8px 12px',
+  fontSize: '13px',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  fontFamily: 'Inter, sans-serif',
 }
 
 const styles = {
@@ -77,7 +171,6 @@ const styles = {
   },
   tabBar: {
     display: 'flex',
-    gap: '0',
     padding: '0 24px',
     borderBottom: '1px solid #e5e7eb',
     backgroundColor: '#f9fafb',
@@ -91,7 +184,7 @@ const styles = {
     cursor: 'pointer',
     letterSpacing: '0.01em',
     lineHeight: '1',
-    marginBottom: '-1px',  /* overlap the container's bottom border */
+    marginBottom: '-1px',
     transition: 'color 0.15s',
   },
   tabActive: {
@@ -103,7 +196,7 @@ const styles = {
     color: '#6b7280',
     borderBottom: '2px solid transparent',
   },
-  /* Overview stat cards — identical layout to the pre-dashboard v0.13 grid */
+  /* Overview stat cards */
   statsRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
@@ -140,10 +233,17 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
   },
-  /* Placeholder panels for charts not yet implemented */
-  content: {
-    padding: '28px 24px',
+  /* Chart panels */
+  chartPanel: {
+    padding: '24px 24px 20px',
     backgroundColor: '#ffffff',
+  },
+  chartTitle: {
+    margin: '0 0 16px',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#374151',
+    letterSpacing: '0.01em',
   },
   placeholder: {
     margin: '0',
