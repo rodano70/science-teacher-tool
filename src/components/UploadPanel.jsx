@@ -1,4 +1,5 @@
 import FileUpload from '../FileUpload'
+import PdfDropZone from './PdfDropZone'
 
 export default function UploadPanel({
   examBoard, setExamBoard,
@@ -8,6 +9,10 @@ export default function UploadPanel({
   studentData,
   onDataParsed,
   onReset,
+  questionTexts,
+  questionPdfStatus,
+  onPdfFile,
+  clearQuestionTexts,
   wcfLoading, wcfProgress, onGenerateWCF,
   feedbackLoading, feedbackProgress, onGenerateFeedback,
 }) {
@@ -71,6 +76,14 @@ export default function UploadPanel({
           onChange={e => setGradeBoundaries(e.target.value)}
         />
       </div>
+
+      {/* ── PDF question paper ───────────────────────────────────────── */}
+      <PdfDropZone
+        questionTexts={questionTexts}
+        questionPdfStatus={questionPdfStatus}
+        onPdfFile={onPdfFile}
+        onClear={clearQuestionTexts}
+      />
 
       {/* ── File upload ───────────────────────────────────────────────── */}
       <FileUpload onDataParsed={onDataParsed} />

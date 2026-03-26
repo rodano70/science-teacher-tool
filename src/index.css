@@ -158,6 +158,23 @@ button:focus-visible {
   border-style: solid;
 }
 
+/* ── PDF spinner ─────────────────────────────────────────────────────────── */
+
+@keyframes pdf-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pdf-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #1d4ed8;
+  border-radius: 50%;
+  animation: pdf-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── Print ───────────────────────────────────────────────────────────────── */
 
 @media print {

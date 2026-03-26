@@ -25,6 +25,11 @@ function App() {
     setQuestionPdfStatus('idle')
   }
 
+  // Stub — Step 3 will implement actual extraction via claude-haiku
+  async function handlePdfFile(_file) {
+    setQuestionPdfStatus('loading')
+  }
+
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
 
@@ -189,6 +194,10 @@ function App() {
             studentData={studentData}
             onDataParsed={setStudentData}
             onReset={handleReset}
+            questionTexts={questionTexts}
+            questionPdfStatus={questionPdfStatus}
+            onPdfFile={handlePdfFile}
+            clearQuestionTexts={clearQuestionTexts}
             wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
             feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
           />
