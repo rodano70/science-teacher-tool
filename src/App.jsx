@@ -4,6 +4,7 @@ import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
 import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
+import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
 function App() {
@@ -16,19 +17,13 @@ function App() {
   const [topic, setTopic] = useState('')
   const [gradeBoundaries, setGradeBoundaries] = useState('')
 
-  // PDF question extraction state
-  const [questionTexts, setQuestionTexts] = useState([])
-  const [questionPdfStatus, setQuestionPdfStatus] = useState('idle') // 'idle' | 'loading' | 'ready' | 'error'
-
-  function clearQuestionTexts() {
-    setQuestionTexts([])
-    setQuestionPdfStatus('idle')
-  }
-
-  // Stub — Step 3 will implement actual extraction via claude-haiku
-  async function handlePdfFile(_file) {
-    setQuestionPdfStatus('loading')
-  }
+  // PDF question extraction
+  const {
+    questionTexts,
+    questionPdfStatus,
+    extractQuestionsFromPdf,
+    clearQuestionTexts,
+  } = usePdfExtraction()
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
@@ -158,8 +153,7 @@ function App() {
     setSubject('')
     setTopic('')
     setGradeBoundaries('')
-    setQuestionTexts([])
-    setQuestionPdfStatus('idle')
+    clearQuestionTexts()
     setFeedbackData(null)
     setFeedbackLoading(false)
     setFeedbackError('')
@@ -196,7 +190,7 @@ function App() {
             onReset={handleReset}
             questionTexts={questionTexts}
             questionPdfStatus={questionPdfStatus}
-            onPdfFile={handlePdfFile}
+            onPdfFile={extractQuestionsFromPdf}
             clearQuestionTexts={clearQuestionTexts}
             wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
             feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
