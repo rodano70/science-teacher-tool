@@ -49,10 +49,10 @@ function DistributionTooltip({ active, payload, maxScore }) {
 export default function PerformanceDashboard({ statCards, questionStats, scoreDistribution }) {
   const [activeTab, setActiveTab] = useState('Overview')
 
-  // Dynamic chart height — 28px per question row plus axis headroom
+  // 32px per question row gives each bar comfortable breathing room
   const perQChartHeight = questionStats
-    ? Math.max(280, questionStats.length * 28 + 50)
-    : 280
+    ? Math.max(300, questionStats.length * 32 + 60)
+    : 300
 
   return (
     <div style={styles.wrapper}>
@@ -107,7 +107,7 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
               data={questionStats}
               layout="vertical"
               margin={{ top: 4, right: 32, bottom: 4, left: 8 }}
-              barSize={14}
+              barSize={16}
             >
               <CartesianGrid horizontal={false} vertical={true} stroke="#f0f0f0" strokeDasharray="3 3" />
 
@@ -161,7 +161,7 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
       {activeTab === 'Score Distribution' && (
         <div style={styles.chartPanel}>
           <p style={styles.chartTitle}>Score Distribution</p>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart
               data={scoreDistribution}
               margin={{ top: 4, right: 24, bottom: 4, left: 0 }}
@@ -239,13 +239,12 @@ const styles = {
     color: '#6b7280',
     borderBottom: '2px solid transparent',
   },
-  /* Overview stat cards */
+  /* Overview stat cards — no bottom border; wrapper.borderBottom is the separator */
   statsRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '1px',
     backgroundColor: '#e5e7eb',
-    borderBottom: '1px solid #e5e7eb',
   },
   statCard: {
     display: 'flex',
@@ -278,7 +277,7 @@ const styles = {
   },
   /* Chart panels */
   chartPanel: {
-    padding: '24px 24px 20px',
+    padding: '24px',
     backgroundColor: '#ffffff',
   },
   chartTitle: {
@@ -287,11 +286,5 @@ const styles = {
     fontWeight: '600',
     color: '#374151',
     letterSpacing: '0.01em',
-  },
-  placeholder: {
-    margin: '0',
-    fontSize: '13px',
-    color: '#9ca3af',
-    fontStyle: 'italic',
   },
 }
