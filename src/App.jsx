@@ -177,6 +177,7 @@ function App() {
               examBoard={examBoard}
               subject={subject}
               topic={topic}
+              studentData={studentData}
             />
           )}
 
@@ -190,7 +191,7 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.12</p>
+      <p style={styles.version}>v0.13</p>
     </div>
   )
 }
