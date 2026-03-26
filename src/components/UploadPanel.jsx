@@ -1,4 +1,5 @@
 import FileUpload from '../FileUpload'
+import PdfDropZone from './PdfDropZone'
 
 export default function UploadPanel({
   examBoard, setExamBoard,
@@ -8,6 +9,11 @@ export default function UploadPanel({
   studentData,
   onDataParsed,
   onReset,
+  questionTexts,
+  questionPdfStatus,
+  onPdfFile,
+  clearQuestionTexts,
+  onQuestionChange,
   wcfLoading, wcfProgress, onGenerateWCF,
   feedbackLoading, feedbackProgress, onGenerateFeedback,
 }) {
@@ -72,6 +78,15 @@ export default function UploadPanel({
         />
       </div>
 
+      {/* ── PDF question paper ───────────────────────────────────────── */}
+      <PdfDropZone
+        questionTexts={questionTexts}
+        questionPdfStatus={questionPdfStatus}
+        onPdfFile={onPdfFile}
+        onClear={clearQuestionTexts}
+        onQuestionChange={onQuestionChange}
+      />
+
       {/* ── File upload ───────────────────────────────────────────────── */}
       <FileUpload onDataParsed={onDataParsed} />
 
@@ -88,6 +103,9 @@ export default function UploadPanel({
           disabled={wcfLoading}
         >
           {wcfLoading ? 'Generating…' : 'Generate Class Feedback Sheet'}
+          {!wcfLoading && questionTexts.length > 0 && (
+            <span style={styles.qContextBadge}>✓ With question context</span>
+          )}
         </button>
 
         <button
@@ -98,6 +116,9 @@ export default function UploadPanel({
           disabled={feedbackLoading}
         >
           {feedbackLoading ? 'Generating…' : 'Generate Individual Feedback'}
+          {!feedbackLoading && questionTexts.length > 0 && (
+            <span style={styles.qContextBadge}>✓ With question context</span>
+          )}
         </button>
       </div>
 
@@ -213,6 +234,14 @@ const styles = {
   btnPrimary: {
     backgroundColor: '#1d4ed8',
     color: '#ffffff',
+  },
+  qContextBadge: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '400',
+    color: '#86efac',
+    marginTop: '3px',
+    letterSpacing: '0.01em',
   },
   resetRow: {
     display: 'flex',

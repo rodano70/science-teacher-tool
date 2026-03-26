@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.15
+
+- PDF question paper route (Future Feature B): always-visible "Question paper" section in the form with drag-and-drop / click-to-browse PDF upload
+- `usePdfExtraction` hook: reads the PDF as base64 via `FileReader`, calls the Anthropic API with a `document` content block (model: `claude-haiku-4-5-20251001`, max_tokens 1000), strips any markdown fences, and `JSON.parse`s the result into a `questionTexts` string array
+- `PdfDropZone` component: four visual states — idle (dashed drop zone with SVG document icon), loading (CSS spinner + "Extracting questions…"), error (red inline message with "try again" retry), ready (editable numbered list)
+- Ready state: auto-resizing `<textarea>` per question (height:'auto' → scrollHeight pattern), Q1/Q2/… label column, edits update `questionTexts` state live via `updateQuestionText`
+- Question context injected into both WCF and individual feedback prompts as `Question paper: Q1: … Q2: …` immediately after the grade-boundaries line; block is omitted entirely when no PDF is uploaded
+- "✓ With question context" badge (muted green secondary line) on both Generate buttons when `questionTexts.length > 0`; hidden during generation and absent when no PDF is loaded
+- `clearQuestionTexts` resets PDF state to idle; called on Start Over and available as a text link below the question list and in the error state
+
 ## v0.14
 
 - Performance dashboard: Score Distribution tab — vertical histogram, one bar per total score achieved, blue bars, integer Y axis, tooltip showing student count

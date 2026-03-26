@@ -2,7 +2,7 @@
 
 ## Overview
 
-UK Science Teacher Tool is a browser-based React application that helps secondary science teachers analyse class exam results and produce feedback. A teacher uploads an Excel spreadsheet of student scores, fills in a few form fields, and can generate either a structured Whole Class Feedback (WCF) sheet or personalised WWW/EBI/To-Improve feedback for every student. All AI analysis is performed by calling the Claude API directly from the browser.
+UK Science Teacher Tool is a browser-based React application that helps secondary science teachers analyse class exam results and produce feedback. A teacher uploads an Excel spreadsheet of student scores, fills in a few form fields, and can optionally upload an exam question paper PDF. They can then generate either a structured Whole Class Feedback (WCF) sheet or personalised WWW/EBI/To-Improve feedback for every student. All AI analysis is performed by calling the Claude API directly from the browser.
 
 ---
 
@@ -11,8 +11,9 @@ UK Science Teacher Tool is a browser-based React application that helps secondar
 ```
 src/
 ├── App.jsx
-│   Root component. Owns all shared state (studentData, form fields, activeOutput),
-│   the shared callClaude helper, and the reset handler. Composes UploadPanel,
+│   Root component. Owns all shared state (studentData, form fields, activeOutput).
+│   Uses usePdfExtraction for PDF question state (questionTexts, questionPdfStatus).
+│   Holds the shared callClaude helper and the reset handler. Composes UploadPanel,
 │   ClassFeedbackPanel, and IndividualFeedbackPanel. Derives chart data (questionStats,
 │   scoreDistribution) from studentData without additional API calls.
 │
@@ -31,9 +32,23 @@ src/
 │   │
 │   ├── UploadPanel.jsx
 │   │   Form panel containing the Exam Board and Subject selects, Topic and Grade
-│   │   Boundaries text inputs, the FileUpload component, action buttons (Generate
-│   │   Class Feedback Sheet / Generate Individual Feedback), Start Over, and progress
-│   │   bars. Purely presentational — all state and handlers come from App via props.
+│   │   Boundaries text inputs, the PdfDropZone, the FileUpload component, action
+│   │   buttons (Generate Class Feedback Sheet / Generate Individual Feedback), Start
+│   │   Over, and progress bars. Purely presentational — all state and handlers come
+│   │   from App via props.
+│   │
+│   ├── PdfDropZone.jsx
+│   │   Always-visible "Question paper" section rendered between Grade Boundaries and
+│   │   the Excel upload. Manages drag-over highlight state locally; all other state
+│   │   (questionPdfStatus, questionTexts) comes from App via props.
+│   │   Four display states driven by questionPdfStatus:
+│   │     idle   — dashed drop zone with SVG document icon; accepts PDF files only
+│   │     loading — CSS spinner (.pdf-spinner) + "Extracting questions…"
+│   │     error  — red inline message with "try again" retry link (resets to idle)
+│   │     ready  — success banner, numbered auto-resize textareas (one per question),
+│   │              "Clear question paper" link below the list
+│   │   Contains a private AutoResizeTextarea helper that uses a ref + useEffect to
+│   │   set height:'auto' then scrollHeight on every value change.
 │   │
 │   ├── ClassFeedback/
 │   │   │
@@ -71,14 +86,30 @@ src/
 │   ├── useClassFeedback.js
 │   │   Custom hook encapsulating all WCF feature state: wcfData, wcfLoading, wcfError,
 │   │   wcfProgress. Runs an asymptotic progress animation via setInterval while loading.
-│   │   Builds the Claude prompt from the class summary, calls callClaude (max_tokens 4000),
+│   │   Accepts questionTexts from App; if non-empty, prepends a "Question paper: Q1: …"
+│   │   line to the prompt before the class data block. Calls callClaude (max_tokens 4000),
 │   │   strips JSON fences, and parses the response.
 │   │
-│   └── useIndividualFeedback.js
-│       Custom hook for the individual feedback feature: feedbackData, feedbackLoading,
-│       feedbackError, feedbackSuccess, feedbackProgress. Calls callClaude (max_tokens 8000),
-│       strips JSON fences, parses the response. Also exposes handleDownloadWordDoc, which
-│       delegates to docUtils.downloadFeedbackDoc.
+│   ├── useIndividualFeedback.js
+│   │   Custom hook for the individual feedback feature: feedbackData, feedbackLoading,
+│   │   feedbackError, feedbackSuccess, feedbackProgress. Accepts questionTexts from App;
+│   │   if non-empty, prepends the same "Question paper: Q1: …" line before the student
+│   │   data block. Calls callClaude (max_tokens 8000), strips JSON fences, parses the
+│   │   response. Also exposes handleDownloadWordDoc, which delegates to
+│   │   docUtils.downloadFeedbackDoc.
+│   │
+│   └── usePdfExtraction.js
+│       Custom hook that owns PDF question extraction state: questionTexts (string[]) and
+│       questionPdfStatus ('idle' | 'loading' | 'ready' | 'error'). Exposes:
+│         extractQuestionsFromPdf(file) — reads the File as a base64 data URL via
+│           FileReader, strips the data-URL prefix, POSTs to the Anthropic API with a
+│           document content block (type:'document', source.type:'base64',
+│           media_type:'application/pdf') plus a text extraction prompt. Model is
+│           claude-haiku-4-5-20251001 (hardcoded), max_tokens 1000. Strips markdown
+│           fences, JSON.parses the result, and sets questionTexts + status:'ready'.
+│           On any error: logs to console and sets status:'error'.
+│         updateQuestionText(index, text) — functional setState update for live editing.
+│         clearQuestionTexts() — resets both state values to their initial values.
 │
 └── utils/
     └── docUtils.js
@@ -98,7 +129,7 @@ src/
 
 ### Separation of API logic into hooks
 
-`useClassFeedback` and `useIndividualFeedback` each own their feature's loading state, progress animation, API interaction, JSON parsing, and error handling. This keeps App.jsx lean: it is responsible only for shared state (student data, form fields, active output) and the `callClaude` transport helper. Moving API logic into hooks also makes each feature independently testable and prevents the root component from growing into a monolithic file as features are added.
+`useClassFeedback`, `useIndividualFeedback`, and `usePdfExtraction` each own their feature's state, API interaction, and error handling. This keeps App.jsx lean: it is responsible only for shared state (student data, form fields, active output) and the `callClaude` transport helper. `usePdfExtraction` makes its own `fetch` call directly (rather than using `callClaude`) because it sends a multi-part `content` array with a document block — a structure that `callClaude`'s simple text-only signature does not accommodate. Moving API logic into hooks also makes each feature independently testable and prevents the root component from growing into a monolithic file as features are added.
 
 ### `classUtils.js` is kept untouched during refactors
 
@@ -114,20 +145,27 @@ The parsing logic in `classUtils.js` handles two structurally different Excel fo
 
 1. **Upload**: The teacher selects an Excel file in `FileUpload`. SheetJS parses it into an array of row objects and calls `onDataParsed`, which sets `studentData` in App.
 
-2. **WCF path**: The teacher clicks "Generate Class Feedback Sheet". App's `onClickGenerateWCF` clears any existing individual-feedback state, then calls `handleGenerateWCF` from `useClassFeedback`. The hook calls `computeClassSummary` and `formatSummaryForPrompt` (classUtils) to build a compact text summary, constructs a prompt requesting a JSON object with six specific keys, and calls `callClaude` (max_tokens 4000). The raw response text has any markdown JSON fences stripped before `JSON.parse`. The parsed object is stored in `wcfData` and `activeOutput` is set to `'wcf'`. App renders `ClassFeedbackPanel`, which passes pre-computed `questionStats` and `scoreDistribution` (derived in App from `studentData`) to `PerformanceDashboard`.
+2. **PDF route (optional)**: The teacher drops or selects a PDF in `PdfDropZone`. The component calls `extractQuestionsFromPdf` from `usePdfExtraction`. The hook reads the file as a base64 data URL, strips the prefix, and POSTs to the Anthropic API with a document content block (`claude-haiku-4-5-20251001`, max_tokens 1000). The response is stripped of markdown fences and parsed into `questionTexts`. Status transitions: `idle` → `loading` → `ready` (or `error`). In the ready state, `PdfDropZone` renders an editable numbered list; each keystroke calls `updateQuestionText`, which updates `questionTexts` in the hook via functional setState. Both Generate buttons show a "✓ With question context" badge while `questionTexts.length > 0`.
 
-3. **Individual feedback path**: The teacher clicks "Generate Individual Feedback". App's `onClickGenerateFeedback` clears WCF state, then calls `handleGenerateFeedback` from `useIndividualFeedback`. The hook calls `extractStudentsForFeedback` (classUtils) to get a flat student list, constructs a prompt requesting a JSON array with one object per student (name, score, www, ebi, to_improve), and calls `callClaude` (max_tokens 8000). JSON fences are stripped and the array is parsed into `feedbackData`. `activeOutput` is set to `'individual'`. App renders `IndividualFeedbackPanel`, which maps `feedbackData` to `StudentCard` components.
+3. **WCF path**: The teacher clicks "Generate Class Feedback Sheet". App's `onClickGenerateWCF` clears any existing individual-feedback state, then calls `handleGenerateWCF` from `useClassFeedback`. The hook calls `computeClassSummary` and `formatSummaryForPrompt` (classUtils) to build a compact text summary. If `questionTexts` is non-empty, a `Question paper: Q1: … Q2: …` line is prepended before the class data block. The hook calls `callClaude` (max_tokens 4000). The raw response text has any markdown JSON fences stripped before `JSON.parse`. The parsed object is stored in `wcfData` and `activeOutput` is set to `'wcf'`. App renders `ClassFeedbackPanel`, which passes pre-computed `questionStats` and `scoreDistribution` (derived in App from `studentData`) to `PerformanceDashboard`.
 
-4. **Word download**: The teacher clicks "Download as Word Document". `handleDownloadWordDoc` in `useIndividualFeedback` calls `downloadFeedbackDoc` (docUtils), which builds a `.docx` document using the docx library and triggers a browser download via a temporary anchor element.
+4. **Individual feedback path**: The teacher clicks "Generate Individual Feedback". App's `onClickGenerateFeedback` clears WCF state, then calls `handleGenerateFeedback` from `useIndividualFeedback`. The hook calls `extractStudentsForFeedback` (classUtils) to get a flat student list. If `questionTexts` is non-empty, the same `Question paper:` line is prepended before the student data block. The hook calls `callClaude` (max_tokens 8000). JSON fences are stripped and the array is parsed into `feedbackData`. `activeOutput` is set to `'individual'`. App renders `IndividualFeedbackPanel`, which maps `feedbackData` to `StudentCard` components.
+
+5. **Word download**: The teacher clicks "Download as Word Document". `handleDownloadWordDoc` in `useIndividualFeedback` calls `downloadFeedbackDoc` (docUtils), which builds a `.docx` document using the docx library and triggers a browser download via a temporary anchor element.
 
 ---
 
 ## API Usage
 
-- **Model**: `claude-sonnet-4-6`
-- **max_tokens**: 4000 for WCF generation; 8000 for individual feedback (longer because it generates one entry per student)
-- **JSON fence stripping**: Both hooks apply `rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()` before `JSON.parse`. This handles cases where the model wraps its JSON response in a markdown code block despite being instructed not to.
-- **Why JSON responses**: Both features need structured data to render UI (section bullet lists for WCF; per-student fields for individual feedback). Requesting JSON means the response can be parsed directly into state without additional text processing. The prompts explicitly forbid preamble, markdown fences, and extra text to maximise the chance of a clean parse on the first attempt.
+| Purpose | Model | max_tokens | Transport |
+|---------|-------|-----------|-----------|
+| WCF generation | `claude-sonnet-4-6` | 4000 | `callClaude` (text-only) |
+| Individual feedback | `claude-sonnet-4-6` | 8000 | `callClaude` (text-only) |
+| PDF question extraction | `claude-haiku-4-5-20251001` | 1000 | Direct `fetch` with document block |
+
+- **PDF document block**: `usePdfExtraction` sends a multi-part `content` array: a `{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: <base64> } }` block followed by a text block with the extraction prompt. This format is not compatible with the `callClaude` helper (which accepts only a plain string prompt), so the hook makes its own `fetch` call with the same API headers.
+- **JSON fence stripping**: All three hooks apply `rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()` before `JSON.parse`. This handles cases where the model wraps its response in a markdown code block despite being instructed not to.
+- **Why JSON responses**: All three features need structured data. Requesting JSON means responses can be parsed directly into state without additional text processing. The prompts explicitly forbid preamble, markdown fences, and extra text to maximise the chance of a clean parse on the first attempt.
 
 ---
 

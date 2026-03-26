@@ -4,6 +4,7 @@ import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
 import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
+import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
 function App() {
@@ -15,6 +16,15 @@ function App() {
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [gradeBoundaries, setGradeBoundaries] = useState('')
+
+  // PDF question extraction
+  const {
+    questionTexts,
+    questionPdfStatus,
+    extractQuestionsFromPdf,
+    clearQuestionTexts,
+    updateQuestionText,
+  } = usePdfExtraction()
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
@@ -78,6 +88,7 @@ function App() {
     topic,
     gradeBoundaries,
     studentData,
+    questionTexts,
     validateInputs,
     callClaude,
     setActiveOutput,
@@ -91,6 +102,7 @@ function App() {
     topic,
     gradeBoundaries,
     studentData,
+    questionTexts,
     validateInputs,
     callClaude,
     setActiveOutput,
@@ -142,6 +154,7 @@ function App() {
     setSubject('')
     setTopic('')
     setGradeBoundaries('')
+    clearQuestionTexts()
     setFeedbackData(null)
     setFeedbackLoading(false)
     setFeedbackError('')
@@ -176,6 +189,11 @@ function App() {
             studentData={studentData}
             onDataParsed={setStudentData}
             onReset={handleReset}
+            questionTexts={questionTexts}
+            questionPdfStatus={questionPdfStatus}
+            onPdfFile={extractQuestionsFromPdf}
+            clearQuestionTexts={clearQuestionTexts}
+            onQuestionChange={updateQuestionText}
             wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
             feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
           />
@@ -217,7 +235,7 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.14</p>
+      <p style={styles.version}>v0.15</p>
     </div>
   )
 }
