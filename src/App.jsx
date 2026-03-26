@@ -177,6 +177,7 @@ function App() {
               examBoard={examBoard}
               subject={subject}
               topic={topic}
+              studentData={studentData}
             />
           )}
 
