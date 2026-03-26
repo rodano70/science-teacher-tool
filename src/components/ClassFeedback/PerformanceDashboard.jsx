@@ -25,6 +25,18 @@ function QuestionTooltip({ active, payload }) {
   )
 }
 
+function DistributionTooltip({ active, payload, maxScore }) {
+  if (!active || !payload || payload.length === 0) return null
+  const { score, count } = payload[0].payload
+  return (
+    <div style={tooltipStyle}>
+      <span style={{ fontWeight: 600, color: '#1e3150' }}>
+        {count} student{count !== 1 ? 's' : ''} scored {score}/{maxScore}
+      </span>
+    </div>
+  )
+}
+
 /**
  * PerformanceDashboard — tabbed chart panel that sits between the WCF header
  * and the six written feedback sections.
@@ -148,7 +160,38 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
       {/* ── Score Distribution ── */}
       {activeTab === 'Score Distribution' && (
         <div style={styles.chartPanel}>
-          <p style={styles.placeholder}>Score distribution histogram coming in next step.</p>
+          <p style={styles.chartTitle}>Score Distribution</p>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart
+              data={scoreDistribution}
+              margin={{ top: 4, right: 24, bottom: 4, left: 0 }}
+              barSize={28}
+            >
+              <CartesianGrid vertical={false} stroke="#f0f0f0" strokeDasharray="3 3" />
+
+              <XAxis
+                type="category"
+                dataKey="score"
+                tick={{ fontSize: 12, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
+                axisLine={{ stroke: '#e5e7eb' }}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+                width={28}
+              />
+
+              <Tooltip
+                content={<DistributionTooltip maxScore={statCards.classTotalMax} />}
+                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+              />
+
+              <Bar dataKey="count" fill="#5b8dd9" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
