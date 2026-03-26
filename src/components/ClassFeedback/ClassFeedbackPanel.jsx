@@ -5,7 +5,7 @@
 import FeedbackSection from './FeedbackSection'
 import { computeClassSummary } from '../../classUtils'
 
-export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData }) {
+export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData, questionStats, scoreDistribution }) {
   const today = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
