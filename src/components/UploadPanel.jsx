@@ -13,6 +13,7 @@ export default function UploadPanel({
   questionPdfStatus,
   onPdfFile,
   clearQuestionTexts,
+  onQuestionChange,
   wcfLoading, wcfProgress, onGenerateWCF,
   feedbackLoading, feedbackProgress, onGenerateFeedback,
 }) {
@@ -83,6 +84,7 @@ export default function UploadPanel({
         questionPdfStatus={questionPdfStatus}
         onPdfFile={onPdfFile}
         onClear={clearQuestionTexts}
+        onQuestionChange={onQuestionChange}
       />
 
       {/* ── File upload ───────────────────────────────────────────────── */}

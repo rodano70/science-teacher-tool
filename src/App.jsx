@@ -23,6 +23,7 @@ function App() {
     questionPdfStatus,
     extractQuestionsFromPdf,
     clearQuestionTexts,
+    updateQuestionText,
   } = usePdfExtraction()
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
@@ -192,6 +193,7 @@ function App() {
             questionPdfStatus={questionPdfStatus}
             onPdfFile={extractQuestionsFromPdf}
             clearQuestionTexts={clearQuestionTexts}
+            onQuestionChange={updateQuestionText}
             wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
             feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
           />

@@ -78,5 +78,9 @@ export function usePdfExtraction() {
     }
   }
 
-  return { questionTexts, questionPdfStatus, extractQuestionsFromPdf, clearQuestionTexts }
+  function updateQuestionText(index, text) {
+    setQuestionTexts(prev => prev.map((q, i) => (i === index ? text : q)))
+  }
+
+  return { questionTexts, questionPdfStatus, extractQuestionsFromPdf, clearQuestionTexts, updateQuestionText }
 }

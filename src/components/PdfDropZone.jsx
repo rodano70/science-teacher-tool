@@ -1,6 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFile, onClear }) {
+// Auto-resizes to fit content: sets height:'auto' first so scrollHeight recalculates,
+// then pins the height to scrollHeight. resize:'none' keeps the manual handle hidden.
+function AutoResizeTextarea({ value, onChange, style }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      rows={1}
+      style={{ ...style, overflow: 'hidden', resize: 'none' }}
+    />
+  )
+}
+
+export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFile, onClear, onQuestionChange }) {
   const [dragOver, setDragOver] = useState(false)
 
   function handleDrop(e) {
@@ -22,17 +45,16 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
     setDragOver(true)
   }
 
-  const showClearLink = questionPdfStatus === 'ready' || questionPdfStatus === 'error'
-
   return (
     <div style={styles.section}>
-      {/* ── Header row: label + optional clear link ───────────────────── */}
+      {/* ── Header row: label + clear link (error state only — ready state
+           has the link at the bottom of the list instead) ───────────── */}
       <div style={styles.headerRow}>
         <div>
           <span style={styles.sectionLabel}>Question paper</span>
           <span style={styles.optional}> (optional)</span>
         </div>
-        {showClearLink && (
+        {questionPdfStatus === 'error' && (
           <button style={styles.clearLink} onClick={onClear} type="button">
             Clear question paper
           </button>
@@ -64,11 +86,38 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
         </p>
       )}
 
-      {/* ── Ready state: question list (Step 3 will make this editable) ── */}
-      {questionPdfStatus === 'ready' && questionTexts.length > 0 && (
-        <div style={styles.readyNote}>
-          <span style={styles.readyCheck}>✓</span>
-          {questionTexts.length} question{questionTexts.length !== 1 ? 's' : ''} extracted
+      {/* ── Ready state: editable question list ──────────────────────── */}
+      {questionPdfStatus === 'ready' && (
+        <div>
+          {/* Success banner */}
+          <div style={styles.successBanner}>
+            <span style={styles.successCheck}>✓</span>
+            <span>
+              {questionTexts.length} question{questionTexts.length !== 1 ? 's' : ''} extracted
+              {' '}— edit any that need correcting.
+            </span>
+          </div>
+
+          {/* Numbered textarea list */}
+          <div style={styles.questionList}>
+            {questionTexts.map((text, i) => (
+              <div key={i} style={styles.questionRow}>
+                <span style={styles.questionLabel} aria-hidden="true">Q{i + 1}</span>
+                <AutoResizeTextarea
+                  value={text}
+                  onChange={e => onQuestionChange(i, e.target.value)}
+                  style={styles.questionTextarea}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Clear link below the list */}
+          <div style={styles.clearRow}>
+            <button style={styles.clearLink} onClick={onClear} type="button">
+              Clear question paper
+            </button>
+          </div>
         </div>
       )}
 
@@ -211,16 +260,54 @@ const styles = {
     textDecoration: 'underline',
     fontFamily: 'inherit',
   },
-  readyNote: {
+  successBanner: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
     fontSize: '13px',
     color: '#15803d',
     fontWeight: '500',
-    padding: '2px 0',
+    marginBottom: '12px',
   },
-  readyCheck: {
+  successCheck: {
     fontWeight: '700',
+    flexShrink: 0,
+  },
+  questionList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  questionRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+  },
+  questionLabel: {
+    flexShrink: 0,
+    width: '26px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#6b7280',
+    paddingTop: '7px',
+    fontVariantNumeric: 'tabular-nums',
+    userSelect: 'none',
+  },
+  questionTextarea: {
+    flex: 1,
+    padding: '6px 9px',
+    borderRadius: '4px',
+    border: '1px solid #e5e7eb',
+    fontSize: '13px',
+    color: '#111827',
+    lineHeight: '1.55',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    outline: 'none',
+    width: '100%',
+  },
+  clearRow: {
+    marginTop: '12px',
+    textAlign: 'right',
   },
 }
