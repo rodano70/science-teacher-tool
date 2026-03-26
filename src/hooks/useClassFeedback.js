@@ -54,9 +54,13 @@ export function useClassFeedback({
 
     const summaryText = formatSummaryForPrompt(summary)
 
+    const questionBlock = questionTexts.length > 0
+      ? '\nQuestion paper: ' + questionTexts.map((t, i) => `Q${i + 1}: ${t}`).join(' ')
+      : ''
+
     const userPrompt = `Exam Board: ${examBoard}
 Subject: ${subject}
-Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}
+Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}${questionBlock}
 
 Class data summary:
 ${summaryText}

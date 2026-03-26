@@ -64,9 +64,13 @@ export function useIndividualFeedback({
       )
       .join('\n')
 
+    const questionBlock = questionTexts.length > 0
+      ? '\nQuestion paper: ' + questionTexts.map((t, i) => `Q${i + 1}: ${t}`).join(' ')
+      : ''
+
     const userPrompt = `Exam Board: ${examBoard}
 Subject: ${subject}
-Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}
+Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}${questionBlock}
 
 Student data (Name — Total score — Per-question scores where 1=correct 0=incorrect):
 ${studentList}
