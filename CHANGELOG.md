@@ -20,3 +20,84 @@
 - Form fields: exam board, subject, topic, grade boundaries
 - Shared FileUpload component
 - Architecture refactored into components/, hooks/, and utils/ structure
+
+## v0.13
+
+- WCF stat cards: class average, completers, non-completers, and score range displayed above the feedback sheet
+- UI and layout polish: Inter font via Google Fonts, custom CSS properties, global reset
+- Dark navy header band, 860 px centred layout, off-white page background, white content card with shadow
+- UploadPanel: exam board and subject in a two-column row; solid primary blue action buttons; ghost Start Over
+- FileUpload: full-width dashed upload zone with hover (blue border/bg) and has-file (green) states
+- ClassFeedbackPanel: header matches app navy; print button with hover; print styles moved to index.css
+
+## v0.12
+
+- Teacher feedback generator: individual per-student WWW/EBI/To Improve feedback generated via Claude API
+- Word document download for individual feedback reports
+
+## v0.11
+
+- Non-completers (total = 0) tagged before prompt build; Claude writes a single "no submission recorded" sentence; Word doc renders an italic note with no WWW/EBI/To Improve labels
+- Start Over button: appears only after file upload, requires window.confirm, resets all state including form fields, outputs, and activeOutput
+- Progress bar: asymptotic easing formula (prev + (90 − prev) × 0.04 per 250 ms tick), decelerates near 90% cap, jumps to 100% on API resolve; fixed phase label beneath bar
+- Single output panel: activeOutput state (null | 'wcf' | 'individual') ensures only one result panel renders at a time; stale results no longer accumulate
+
+## v0.10
+
+- extractStudentsForFeedback() added to classUtils.js: mirrors Educake/generic detection, returns clean [{name, total, maxTotal, breakdown}] objects
+- Individual feedback prompt now uses clean student list — removes UPNs, blank rows, class metadata, and __EMPTY_* keys
+- Individual feedback max_tokens raised from 4000 to 8000 to accommodate full class output without truncation
+
+## v0.9
+
+- Diagnostic logging added for Educake score columns (exact __EMPTY_N keys, raw values, all __EMPTY* keys per row)
+- Fixed Educake score column detection: correct columns selected based on Questions metadata value
+- Resolved classTotalMax inflation caused by aggregate rows being included in score calculation
+
+## v0.8
+
+- WCF generation max_tokens raised from 2048 to 4000 to prevent truncated JSON responses
+
+## v0.7
+
+- Strip markdown fences (```json) from API response before JSON.parse() to prevent parse errors
+- Fix Educake score column detection: use Questions metadata value to select exactly __EMPTY through __EMPTY_18 (Q1–Q19)
+- Fix classTotalMax inflation: maxMark per question derived from student scores only, not aggregate rows
+- Score columns now labelled Q1–Q19 instead of __EMPTY, __EMPTY_1, … for readable Claude output
+
+## v0.6
+
+- Strip markdown code fences from API response before JSON.parse()
+- Remove __EMPTY exclusion in computeEducakeSummary so Q1–Q19 columns are correctly included as score columns
+- Console logging of first student row keys added to aid column-name debugging
+
+## v0.5
+
+- Debug instrumentation added to WCF generation pipeline to surface column detection and API response issues
+
+## v0.4
+
+- Educake export format detected via presence of Start Date / End Date / Year / Class keys (SheetJS maps first data row as headers)
+- computeEducakeSummary: filters real student rows by non-empty last-name field, skips date-valued and All Students rows
+- First name and last name (Start Date + End Date columns) combined into full student name
+- Score columns identified by excluding known Educake metadata keys and applying existing ≤20 numeric guard
+- Shared buildSummary() helper used by both Educake and generic paths
+
+## v0.3
+
+- Version bump to v0.3
+
+## v0.2
+
+- UK science teacher prompt and system context applied to API call
+- Version label added (bottom-right, fixed position)
+
+## v0.1
+
+- Vite + React (JavaScript) project scaffolded
+- xlsx and docx added as runtime dependencies
+- Single-page form: Exam Board dropdown (AQA/OCR/Edexcel), Subject dropdown (Biology/Chemistry/Physics/Combined Science), Topic text input, optional Grade Boundaries input, Excel file upload, Generate Feedback button
+- Excel file parsed with SheetJS into array of student objects (one per row)
+- Generate Feedback posts to Anthropic API (claude-sonnet-4-6) with UK science teacher prompt; displays raw response in scrollable box
+- API key read from VITE_ANTHROPIC_API_KEY environment variable
+- Inline error messages and loading state on the Generate Feedback button
