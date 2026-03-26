@@ -33,17 +33,40 @@ export default function PerformanceDashboard({ statCards, questionStats, scoreDi
       </div>
 
       {/* Tab content */}
-      <div style={styles.content}>
-        {activeTab === 'Overview' && (
-          <p style={styles.placeholder}>Stat cards coming in next step.</p>
-        )}
-        {activeTab === 'Per Question' && (
+      {activeTab === 'Overview' && (
+        <div style={styles.statsRow}>
+          <div style={styles.statCard}>
+            <span style={styles.statValue}>{statCards.classAvgPct}%</span>
+            <span style={styles.statLabel}>Class Average</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statValue}>{statCards.completersCount}</span>
+            <span style={styles.statLabel}>Completers</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statValue}>{statCards.nonCompletersCount}</span>
+            <span style={styles.statLabel}>Non-completers</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statValueRange}>
+              {statCards.minScore} &mdash; {statCards.maxScore}
+            </span>
+            <span style={styles.statLabel}>
+              Score range · out of {statCards.classTotalMax}
+            </span>
+          </div>
+        </div>
+      )}
+      {activeTab === 'Per Question' && (
+        <div style={styles.content}>
           <p style={styles.placeholder}>Per-question bar chart coming in next step.</p>
-        )}
-        {activeTab === 'Score Distribution' && (
+        </div>
+      )}
+      {activeTab === 'Score Distribution' && (
+        <div style={styles.content}>
           <p style={styles.placeholder}>Score distribution histogram coming in next step.</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -80,6 +103,44 @@ const styles = {
     color: '#6b7280',
     borderBottom: '2px solid transparent',
   },
+  /* Overview stat cards — identical layout to the pre-dashboard v0.13 grid */
+  statsRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '1px',
+    backgroundColor: '#e5e7eb',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  statCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px 12px',
+    backgroundColor: '#f9fafb',
+    gap: '5px',
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: '26px',
+    fontWeight: '700',
+    color: '#1e3150',
+    lineHeight: '1',
+  },
+  statValueRange: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#1e3150',
+    lineHeight: '1',
+  },
+  statLabel: {
+    fontSize: '11px',
+    fontWeight: '500',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  /* Placeholder panels for charts not yet implemented */
   content: {
     padding: '28px 24px',
     backgroundColor: '#ffffff',
