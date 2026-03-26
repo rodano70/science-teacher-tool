@@ -15,6 +15,7 @@ export function useClassFeedback({
   topic,
   gradeBoundaries,
   studentData,
+  questionTexts,
   validateInputs,
   callClaude,
   setActiveOutput,

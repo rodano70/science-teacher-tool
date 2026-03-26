@@ -16,6 +16,7 @@ export function useIndividualFeedback({
   topic,
   gradeBoundaries,
   studentData,
+  questionTexts,
   validateInputs,
   callClaude,
   setActiveOutput,

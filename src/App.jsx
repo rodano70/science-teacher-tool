@@ -16,6 +16,15 @@ function App() {
   const [topic, setTopic] = useState('')
   const [gradeBoundaries, setGradeBoundaries] = useState('')
 
+  // PDF question extraction state
+  const [questionTexts, setQuestionTexts] = useState([])
+  const [questionPdfStatus, setQuestionPdfStatus] = useState('idle') // 'idle' | 'loading' | 'ready' | 'error'
+
+  function clearQuestionTexts() {
+    setQuestionTexts([])
+    setQuestionPdfStatus('idle')
+  }
+
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
 
@@ -78,6 +87,7 @@ function App() {
     topic,
     gradeBoundaries,
     studentData,
+    questionTexts,
     validateInputs,
     callClaude,
     setActiveOutput,
@@ -91,6 +101,7 @@ function App() {
     topic,
     gradeBoundaries,
     studentData,
+    questionTexts,
     validateInputs,
     callClaude,
     setActiveOutput,
@@ -142,6 +153,8 @@ function App() {
     setSubject('')
     setTopic('')
     setGradeBoundaries('')
+    setQuestionTexts([])
+    setQuestionPdfStatus('idle')
     setFeedbackData(null)
     setFeedbackLoading(false)
     setFeedbackError('')
