@@ -191,7 +191,7 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.13</p>
+      <p style={styles.version}>v0.14a</p>
     </div>
   )
 }
