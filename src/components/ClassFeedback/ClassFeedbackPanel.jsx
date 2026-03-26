@@ -3,9 +3,10 @@
  * returned by Claude. Six sections matching the school WCF template.
  */
 import FeedbackSection from './FeedbackSection'
+import PerformanceDashboard from './PerformanceDashboard'
 import { computeClassSummary } from '../../classUtils'
 
-export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData }) {
+export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData, questionStats, scoreDistribution }) {
   const today = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -20,7 +21,15 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
   const nonCompletersCount = summary ? summary.nonCompleters.length : null
   const minScore = summary && summary.bottomStudents.length > 0 ? summary.bottomStudents[0].total : null
   const maxScore = summary && summary.topStudents.length > 0 ? summary.topStudents[0].total : null
-  const hasStats = summary !== null
+
+  const statCards = summary ? {
+    classAvgPct,
+    completersCount,
+    nonCompletersCount,
+    minScore,
+    maxScore,
+    classTotalMax: summary.classTotalMax,
+  } : null
 
   function handlePrint() {
     window.print()
@@ -45,30 +54,13 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
           </div>
         </div>
 
-        {/* Stat cards */}
-        {hasStats && (
-          <div style={styles.statsRow}>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{classAvgPct}%</span>
-              <span style={styles.statLabel}>Class Average</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{completersCount}</span>
-              <span style={styles.statLabel}>Completers</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{nonCompletersCount}</span>
-              <span style={styles.statLabel}>Non-completers</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValueRange}>
-                {minScore} &mdash; {maxScore}
-              </span>
-              <span style={styles.statLabel}>
-                Score range · out of {summary.classTotalMax}
-              </span>
-            </div>
-          </div>
+        {/* Performance dashboard — tabs: Overview / Per Question / Score Distribution */}
+        {statCards && (
+          <PerformanceDashboard
+            statCards={statCards}
+            questionStats={questionStats}
+            scoreDistribution={scoreDistribution}
+          />
         )}
 
         {/* Section 1: Key Successes */}
@@ -185,41 +177,5 @@ const styles = {
   },
   date: {
     color: '#7dd3fc',
-  },
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '1px',
-    backgroundColor: '#e5e7eb',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  statCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px 12px',
-    backgroundColor: '#f9fafb',
-    gap: '5px',
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: '26px',
-    fontWeight: '700',
-    color: '#1e3150',
-    lineHeight: '1',
-  },
-  statValueRange: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#1e3150',
-    lineHeight: '1',
-  },
-  statLabel: {
-    fontSize: '11px',
-    fontWeight: '500',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
   },
 }

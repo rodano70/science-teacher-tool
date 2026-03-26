@@ -4,6 +4,7 @@ import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
 import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
+import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
 function App() {
   // Shared state — both features read from studentData
@@ -109,6 +110,29 @@ function App() {
     handleGenerateFeedback()
   }
 
+  // ─── Chart data (derived from studentData, no extra API calls) ───────────
+
+  const _summary = studentData ? computeClassSummary(studentData) : null
+
+  const questionStats = _summary
+    ? _summary.questions.map(q => ({
+        label: q.label,
+        pctCorrect: q.maxMark > 0 ? Math.round((q.average / q.maxMark) * 1000) / 10 : 0,
+      }))
+    : null
+
+  const scoreDistribution = (() => {
+    if (!studentData) return null
+    const students = extractStudentsForFeedback(studentData)
+    const completers = students.filter(s => s.total > 0)
+    if (completers.length === 0) return null
+    const countMap = {}
+    completers.forEach(s => { countMap[s.total] = (countMap[s.total] || 0) + 1 })
+    return Object.entries(countMap)
+      .map(([score, count]) => ({ score: Number(score), count }))
+      .sort((a, b) => a.score - b.score)
+  })()
+
   // ─── Reset ────────────────────────────────────────────────────────────────
 
   function handleReset() {
@@ -178,6 +202,8 @@ function App() {
               subject={subject}
               topic={topic}
               studentData={studentData}
+              questionStats={questionStats}
+              scoreDistribution={scoreDistribution}
             />
           )}
 
@@ -191,7 +217,7 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.13</p>
+      <p style={styles.version}>v0.14</p>
     </div>
   )
 }
