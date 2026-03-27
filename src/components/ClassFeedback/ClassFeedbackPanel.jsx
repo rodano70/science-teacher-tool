@@ -1,7 +1,7 @@
 /**
  * ClassFeedbackPanel — Whole Class Feedback sheet, four-zone layout.
  *
- * Zone 1 — Context header (class identity, stat pills, print action)
+ * Zone 1 — Context header (identity block + stat tiles + action buttons)
  * Zone 2 — Assessment Diagnosis  → DiagnosisZone
  * Zone 3 — Individual Signals    → inline (praise + concerns)
  * Zone 4 — Teaching Implications → ImplicationsZone
@@ -39,7 +39,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
 
   const nonCompleters = summary ? summary.nonCompleters : []
 
-  // Parse praise and concerns — strings formatted as "Name — reason"
+  // Parse praise and concerns — strings formatted as "Name — reason" or "Name: reason"
   const toArray = v => Array.isArray(v) ? v : (v ? [v] : [])
   const praiseList = toArray(data.students_to_praise)
   const concernsList = toArray(data.individual_concerns)
@@ -68,55 +68,67 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
         </div>
       </div>
 
-      {/* ── Print button ───────────────────────────────────────────────── */}
-      <div style={styles.printBar} className="no-print">
-        <button className="btn-print" style={styles.printButton} onClick={handlePrint}>
-          Print / Save as PDF
-        </button>
-      </div>
-
       <div style={styles.sheet} id="wcf-sheet">
 
         {/* ── Zone 1: Context header ─────────────────────────────────────── */}
-        <div style={styles.header}>
-          <div style={styles.headerTop}>
-            <div>
-              <h2 style={styles.title}>Whole Class Feedback Sheet</h2>
-              <div style={styles.meta}>
-                <span>{examBoard} {subject} — {topic}</span>
-                <span style={styles.date}>{today}</span>
+        <div style={styles.zone1}>
+
+          {/* Identity block */}
+          <div style={styles.headerIdentity}>
+            <p style={styles.headerEyebrow}>Class Feedback · {today}</p>
+            <h2 style={styles.headerTitle}>{topic || 'Whole Class Feedback'}</h2>
+            <p style={styles.headerSubtitle}>{examBoard} {subject}</p>
+          </div>
+
+          {/* Stat tiles + actions */}
+          {statCards && (
+            <div style={styles.headerControls}>
+
+              {/* Avg tile — primary-container */}
+              {classAvgPct != null && (
+                <div style={{ ...styles.statTile, ...styles.statTilePrimary }}>
+                  <span style={{ ...styles.tileValue, color: 'var(--color-on-primary-container)' }}>{classAvgPct}%</span>
+                  <span style={{ ...styles.tileLabel, color: 'var(--color-on-primary-container)', opacity: 0.7 }}>avg</span>
+                </div>
+              )}
+
+              {/* Completers tile */}
+              {completersCount != null && (
+                <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileValue}>{completersCount}</span>
+                  <span style={styles.tileLabel}>completers</span>
+                </div>
+              )}
+
+              {/* Range tile */}
+              {minScore != null && maxScore != null && (
+                <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileValue}>{minScore}–{maxScore}</span>
+                  <span style={styles.tileLabel}>range / {summary.classTotalMax}</span>
+                </div>
+              )}
+
+              {/* Absent / non-completers tile */}
+              {nonCompletersCount != null && nonCompletersCount > 0 && (
+                <div style={{ ...styles.statTile, ...styles.statTileAlert }}>
+                  <span style={{ ...styles.tileValue, color: 'var(--color-error)' }}>{nonCompletersCount}</span>
+                  <span style={{ ...styles.tileLabel, color: 'var(--color-error)', opacity: 0.8 }}>absent</span>
+                </div>
+              )}
+
+              {/* Vertical divider */}
+              <div style={styles.headerVDivider} />
+
+              {/* Action buttons */}
+              <div style={styles.headerActions} className="no-print">
+                <button style={styles.btnPrint} onClick={handlePrint}>
+                  <span className="material-symbols-outlined" style={styles.btnIcon}>print</span>
+                  Print
+                </button>
               </div>
             </div>
-          </div>
-          {/* Stat pills — quick summary in Zone 1 */}
-          {statCards && (
-            <div style={styles.statPills}>
-              {classAvgPct != null && (
-                <span style={styles.statPill}>
-                  <span style={styles.pillValue}>{classAvgPct}%</span>
-                  <span style={styles.pillLabel}>avg</span>
-                </span>
-              )}
-              {completersCount != null && (
-                <span style={styles.statPill}>
-                  <span style={styles.pillValue}>{completersCount}</span>
-                  <span style={styles.pillLabel}>completers</span>
-                </span>
-              )}
-              {nonCompletersCount != null && nonCompletersCount > 0 && (
-                <span style={{ ...styles.statPill, ...styles.statPillAlert }}>
-                  <span style={styles.pillValue}>{nonCompletersCount}</span>
-                  <span style={styles.pillLabel}>non-completers</span>
-                </span>
-              )}
-              {minScore != null && maxScore != null && (
-                <span style={styles.statPill}>
-                  <span style={styles.pillValue}>{minScore}–{maxScore}</span>
-                  <span style={styles.pillLabel}>range / {summary.classTotalMax}</span>
-                </span>
-              )}
-            </div>
           )}
+
         </div>
 
         {/* ── Zone 2: Assessment Diagnosis ──────────────────────────────── */}
@@ -128,27 +140,31 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
 
         {/* ── Zone 3: Individual Signals ────────────────────────────────── */}
         <div style={styles.signalsZone}>
+          <p style={styles.sectionLabel}>Individual Signals</p>
           <div style={styles.signalsGrid}>
 
             {/* Praise in class */}
             <div style={styles.signalCard}>
               <h3 style={styles.signalHeading}>Praise in class</h3>
-              {praiseList.length > 0 ? (
-                <div style={styles.praisePillWrap}>
-                  {praiseList.map((item, i) => {
-                    // Match "Name — reason" (em/en-dash) or "Name: reason" (colon)
-                    const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
-                    const name = match ? match[1] : item
-                    const reason = match ? match[2] : null
-                    return (
-                      <div key={i} style={styles.praiseRow}>
-                        <span style={styles.praisePill}>{name}</span>
-                        {reason && <span style={styles.praiseReason}>{reason}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
+              {praiseList.length > 0 ? (() => {
+                const parsed = praiseList.map(item => {
+                  const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
+                  return { name: match ? match[1] : item, reason: match ? match[2] : null }
+                })
+                const notes = parsed.filter(p => p.reason).map(p => `${p.name}: ${p.reason}`)
+                return (
+                  <>
+                    <div style={styles.praisePillWrap}>
+                      {parsed.map((p, i) => (
+                        <span key={i} style={styles.praisePill}>{p.name}</span>
+                      ))}
+                    </div>
+                    {notes.length > 0 && (
+                      <p style={styles.praiseHint}>{notes.join(' · ')}</p>
+                    )}
+                  </>
+                )
+              })() : (
                 <p style={styles.empty}>No students identified for praise.</p>
               )}
             </div>
@@ -199,7 +215,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
         {/* ── Zone 5: Performance Analytics ─────────────────────────────── */}
         {statCards && (
           <div style={styles.analyticsZone} className="no-print">
-            <p style={styles.zoneLabel}>PERFORMANCE ANALYTICS</p>
+            <p style={styles.sectionLabel}>Performance Analytics</p>
             <PerformanceDashboard
               statCards={statCards}
               questionStats={questionStats}
@@ -254,24 +270,6 @@ const styles = {
     color: '#374151',
   },
 
-  /* ── Print button ────────────────────────────────────────────────────── */
-  printBar: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginBottom: '14px',
-  },
-  printButton: {
-    padding: '9px 20px',
-    borderRadius: '5px',
-    border: 'none',
-    backgroundColor: '#374151',
-    color: '#fff',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    letterSpacing: '0.01em',
-  },
-
   /* ── Sheet container ─────────────────────────────────────────────────── */
   sheet: {
     backgroundColor: '#ffffff',
@@ -281,62 +279,119 @@ const styles = {
     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
   },
 
-  /* ── Zone 1: Header ──────────────────────────────────────────────────── */
-  header: {
-    backgroundColor: '#1e3150',
-    color: '#ffffff',
-    padding: '20px 24px 16px',
-  },
-  headerTop: {
+  /* ── Zone 1: Context header ──────────────────────────────────────────── */
+  zone1: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-  },
-  title: {
-    margin: '0 0 6px',
-    fontSize: '17px',
-    fontWeight: '700',
-    letterSpacing: '0.01em',
-  },
-  meta: {
-    display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '13px',
-    color: '#93c5fd',
+    gap: '24px',
+    padding: '24px 24px 20px',
+    borderBottom: '1px solid #e5e7eb',
     flexWrap: 'wrap',
+  },
+  headerIdentity: {
+    flex: '1 1 200px',
+  },
+  headerEyebrow: {
+    margin: '0 0 4px',
+    fontSize: '11px',
+    fontWeight: '600',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--color-on-surface-variant)',
+  },
+  headerTitle: {
+    margin: '0 0 4px',
+    fontSize: '20px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '-0.01em',
+    lineHeight: '1.25',
+  },
+  headerSubtitle: {
+    margin: 0,
+    fontSize: '13px',
+    color: 'var(--color-on-surface-variant)',
+  },
+  headerControls: {
+    display: 'flex',
+    alignItems: 'center',
     gap: '8px',
+    flexWrap: 'wrap',
+    flexShrink: 0,
   },
-  date: {
-    color: '#7dd3fc',
+  statTile: {
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '10px',
+    padding: '10px 16px',
+    minWidth: '68px',
   },
-  statPills: {
+  statTilePrimary: {
+    backgroundColor: 'var(--color-primary-container)',
+  },
+  statTileSurface: {
+    backgroundColor: 'var(--color-surface-container-low)',
+  },
+  statTileAlert: {
+    backgroundColor: 'rgba(254, 137, 131, 0.20)',
+  },
+  tileValue: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    lineHeight: '1.2',
+  },
+  tileLabel: {
+    fontSize: '10px',
+    fontWeight: '500',
+    color: 'var(--color-on-surface-variant)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginTop: '2px',
+  },
+  headerVDivider: {
+    width: '1px',
+    height: '40px',
+    backgroundColor: '#e5e7eb',
+    flexShrink: 0,
+    alignSelf: 'center',
+    margin: '0 4px',
+  },
+  headerActions: {
     display: 'flex',
     gap: '8px',
-    marginTop: '14px',
-    flexWrap: 'wrap',
+    alignItems: 'center',
   },
-  statPill: {
+  btnPrint: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '5px',
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    borderRadius: '20px',
-    padding: '4px 12px',
-  },
-  statPillAlert: {
-    backgroundColor: 'rgba(254,137,131,0.15)',
-    border: '1px solid rgba(254,137,131,0.25)',
-  },
-  pillValue: {
+    gap: '6px',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    backgroundColor: '#ffffff',
+    color: 'var(--color-on-surface)',
     fontSize: '13px',
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: '600',
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
   },
-  pillLabel: {
-    fontSize: '11px',
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.70)',
+  btnIcon: {
+    fontSize: '16px',
+    color: 'var(--color-on-surface-variant)',
+  },
+
+  /* ── Section label (shared) ──────────────────────────────────────────── */
+  sectionLabel: {
+    margin: '0 0 14px',
+    fontSize: '10px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    color: 'var(--color-on-surface-variant)',
   },
 
   /* ── Zone 3: Individual Signals ──────────────────────────────────────── */
@@ -350,10 +405,11 @@ const styles = {
     gap: '16px',
   },
   signalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
+    backgroundColor: 'var(--color-surface-container-lowest)',
+    borderRadius: '12px',
     padding: '18px 20px',
-    border: '1px solid #e5e7eb',
+    border: '1px solid rgba(93, 93, 120, 0.12)',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   signalHeading: {
     margin: '0 0 14px',
@@ -366,14 +422,9 @@ const styles = {
   /* Praise pills */
   praisePillWrap: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  praiseRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
     flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '10px',
   },
   praisePill: {
     display: 'inline-block',
@@ -383,14 +434,13 @@ const styles = {
     padding: '3px 12px',
     fontSize: '12px',
     fontWeight: '600',
-    flexShrink: 0,
   },
-  praiseReason: {
+  praiseHint: {
+    margin: 0,
     fontSize: '12px',
     color: '#6b7280',
     fontStyle: 'italic',
     lineHeight: '1.5',
-    paddingTop: '2px',
   },
 
   /* Concern rows */
@@ -401,6 +451,7 @@ const styles = {
   concernRow: {
     display: 'flex',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: '10px',
     padding: '8px 0',
     flexWrap: 'wrap',
@@ -439,18 +490,10 @@ const styles = {
     fontStyle: 'italic',
   },
 
-  /* ── Zone 5: Analytics label ─────────────────────────────────────────── */
+  /* ── Zone 5: Analytics ───────────────────────────────────────────────── */
   analyticsZone: {
     borderTop: '1px solid #e5e7eb',
     padding: '20px 24px 0',
-  },
-  zoneLabel: {
-    margin: '0 0 12px',
-    fontSize: '10px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
-    color: 'var(--color-on-surface-variant)',
   },
 
   /* ── Shared ──────────────────────────────────────────────────────────── */
