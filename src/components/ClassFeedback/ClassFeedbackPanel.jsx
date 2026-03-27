@@ -446,7 +446,7 @@ const styles = {
   },
   signalsGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
     gap: '16px',
   },
   signalCard: {
@@ -509,17 +509,14 @@ const styles = {
   },
   concernRow: {
     display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '10px',
+    flexDirection: 'column',
+    gap: '4px',
     padding: '8px 0',
-    flexWrap: 'wrap',
   },
   concernName: {
     fontSize: '13px',
     fontWeight: '600',
     color: 'var(--color-on-surface)',
-    flexShrink: 0,
   },
   concernLabel: {
     fontSize: '12px',
@@ -527,13 +524,14 @@ const styles = {
     lineHeight: '1.5',
   },
   concernBadge: {
+    display: 'inline-block',
     fontSize: '11px',
-    fontWeight: '700',
+    fontWeight: '500',
     color: 'var(--color-error)',
     backgroundColor: 'rgba(254, 137, 131, 0.18)',
-    padding: '2px 8px',
+    padding: '3px 8px',
     borderRadius: '6px',
-    whiteSpace: 'nowrap',
+    lineHeight: '1.5',
   },
   nonCompleterGroup: {
     marginTop: '12px',
