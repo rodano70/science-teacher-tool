@@ -46,28 +46,8 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
   }
 
   return (
-    <div style={styles.section}>
-      {/* ── Header row: label + clear link (error state only — ready state
-           has the link at the bottom of the list instead) ───────────── */}
-      <div style={styles.headerRow}>
-        <div>
-          <span style={styles.sectionLabel}>Question paper</span>
-          <span style={styles.optional}> (optional)</span>
-        </div>
-        {questionPdfStatus === 'error' && (
-          <button style={styles.clearLink} onClick={onClear} type="button">
-            Clear question paper
-          </button>
-        )}
-      </div>
-
-      {/* ── Helper text ───────────────────────────────────────────────── */}
-      <p style={styles.helperText}>
-        Upload the exam PDF and Claude will reference specific questions in its
-        analysis — making feedback far more diagnostic.
-      </p>
-
-      {/* ── Loading state ─────────────────────────────────────────────── */}
+    <>
+      {/* ── Loading state ─────────────────────────────────────── */}
       {questionPdfStatus === 'loading' && (
         <div style={styles.loadingRow}>
           <span className="pdf-spinner" aria-hidden="true" />
@@ -75,7 +55,7 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
         </div>
       )}
 
-      {/* ── Error state ───────────────────────────────────────────────── */}
+      {/* ── Error state ───────────────────────────────────────── */}
       {questionPdfStatus === 'error' && (
         <p style={styles.errorText}>
           Extraction failed — you can continue without a question paper or{' '}
@@ -86,20 +66,23 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
         </p>
       )}
 
-      {/* ── Ready state: editable question list ──────────────────────── */}
+      {/* ── Ready state: editable question list ──────────────── */}
       {questionPdfStatus === 'ready' && (
         <div>
           {/* Success banner */}
           <div style={styles.successBanner}>
-            <span style={styles.successCheck}>✓</span>
+            <span className="material-symbols-outlined" style={styles.successIcon}>check_circle</span>
             <span>
               {questionTexts.length} question{questionTexts.length !== 1 ? 's' : ''} extracted
               {' '}— edit any that need correcting.
             </span>
           </div>
 
-          {/* Numbered textarea list */}
+          {/* Extracted question list */}
           <div style={styles.questionList}>
+            <div style={styles.questionListHeader}>
+              <span style={styles.questionListLabel}>Extracted Question Map</span>
+            </div>
             {questionTexts.map((text, i) => (
               <div key={i} style={styles.questionRow}>
                 <span style={styles.questionLabel} aria-hidden="true">Q{i + 1}</span>
@@ -108,6 +91,13 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
                   onChange={e => onQuestionChange(i, e.target.value)}
                   style={styles.questionTextarea}
                 />
+                <span
+                  className="material-symbols-outlined"
+                  style={styles.dragHandle}
+                  aria-hidden="true"
+                >
+                  drag_indicator
+                </span>
               </div>
             ))}
           </div>
@@ -121,7 +111,7 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
         </div>
       )}
 
-      {/* ── Drop zone — idle only ─────────────────────────────────────── */}
+      {/* ── Drop zone — idle only ─────────────────────────────── */}
       {questionPdfStatus === 'idle' && (
         <label
           style={{
@@ -138,100 +128,61 @@ export default function PdfDropZone({ questionTexts, questionPdfStatus, onPdfFil
             style={{ display: 'none' }}
             onChange={handleFileChange}
           />
-          <span style={styles.docIcon} aria-hidden="true">
-            <svg width="22" height="26" viewBox="0 0 22 26" fill="none">
-              <rect x="1" y="1" width="15" height="20" rx="2"
-                fill="#f3f4f6" stroke={dragOver ? '#1d4ed8' : '#9ca3af'} strokeWidth="1.5" />
-              <path d="M16 1l5 5h-4a1 1 0 01-1-1V1z"
-                fill={dragOver ? '#bfdbfe' : '#e5e7eb'} />
-              <line x1="4" y1="8" x2="13" y2="8"
-                stroke={dragOver ? '#1d4ed8' : '#d1d5db'} strokeWidth="1.25" strokeLinecap="round" />
-              <line x1="4" y1="11" x2="13" y2="11"
-                stroke={dragOver ? '#1d4ed8' : '#d1d5db'} strokeWidth="1.25" strokeLinecap="round" />
-              <line x1="4" y1="14" x2="9" y2="14"
-                stroke={dragOver ? '#1d4ed8' : '#d1d5db'} strokeWidth="1.25" strokeLinecap="round" />
-            </svg>
-          </span>
-          <span style={dragOver ? styles.dropTextActive : styles.dropText}>
-            Drop PDF here or click to browse
-          </span>
+          <div style={styles.idleContent}>
+            <span
+              className="material-symbols-outlined"
+              style={{
+                ...styles.pdfIcon,
+                color: dragOver ? 'var(--color-primary)' : 'var(--color-outline)',
+              }}
+            >
+              picture_as_pdf
+            </span>
+            <span style={dragOver ? styles.dropTextActive : styles.dropText}>
+              Drop PDF here or click to browse
+            </span>
+          </div>
         </label>
       )}
-    </div>
+    </>
   )
 }
 
 const styles = {
-  section: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '16px',
-    backgroundColor: '#ffffff',
-  },
-  headerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '6px',
-  },
-  sectionLabel: {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#374151',
-    letterSpacing: '0.01em',
-  },
-  optional: {
-    fontWeight: '400',
-    color: '#9ca3af',
-    fontSize: '12px',
-  },
-  clearLink: {
-    background: 'none',
-    border: 'none',
-    padding: '0',
-    fontSize: '12px',
-    color: '#6b7280',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    fontFamily: 'inherit',
-  },
-  helperText: {
-    margin: '0 0 12px',
-    fontSize: '12px',
-    color: '#6b7280',
-    lineHeight: '1.5',
-  },
   dropZone: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '10px',
     width: '100%',
-    padding: '20px 16px',
-    border: '2px dashed #ced4da',
-    borderRadius: '6px',
-    backgroundColor: '#fafbfc',
-    fontSize: '14px',
-    color: '#6b7280',
+    padding: '28px 20px',
+    border: '2px dashed var(--color-outline-variant)',
+    borderRadius: '10px',
+    backgroundColor: 'var(--color-surface-container-lowest)',
     cursor: 'pointer',
     textAlign: 'center',
     transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
     boxSizing: 'border-box',
   },
   dropZoneActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#1d4ed8',
-    color: '#1d4ed8',
+    backgroundColor: 'var(--color-primary-container)',
+    borderColor: 'var(--color-primary)',
   },
-  docIcon: {
-    flexShrink: 0,
-    lineHeight: 0,
+  idleContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  pdfIcon: {
+    fontSize: '36px',
   },
   dropText: {
-    color: '#6b7280',
+    fontSize: '13px',
+    color: 'var(--color-on-surface-variant)',
   },
   dropTextActive: {
-    color: '#1d4ed8',
+    fontSize: '13px',
+    color: 'var(--color-primary)',
   },
   loadingRow: {
     display: 'flex',
@@ -241,13 +192,13 @@ const styles = {
   },
   loadingText: {
     fontSize: '13px',
-    color: '#6b7280',
+    color: 'var(--color-on-surface-variant)',
     fontStyle: 'italic',
   },
   errorText: {
-    margin: '0 0 0',
+    margin: '0',
     fontSize: '13px',
-    color: '#b91c1c',
+    color: 'var(--color-error)',
     lineHeight: '1.5',
   },
   retryBtn: {
@@ -255,7 +206,7 @@ const styles = {
     border: 'none',
     padding: '0',
     fontSize: '13px',
-    color: '#b91c1c',
+    color: 'var(--color-error)',
     cursor: 'pointer',
     textDecoration: 'underline',
     fontFamily: 'inherit',
@@ -263,51 +214,88 @@ const styles = {
   successBanner: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '8px',
     fontSize: '13px',
-    color: '#15803d',
+    color: 'var(--color-primary)',
     fontWeight: '500',
-    marginBottom: '12px',
+    marginBottom: '16px',
   },
-  successCheck: {
-    fontWeight: '700',
+  successIcon: {
+    fontSize: '18px',
     flexShrink: 0,
   },
   questionList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '0',
+    border: '1px solid var(--color-outline-variant)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  questionListHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--color-outline-variant)',
+    backgroundColor: 'var(--color-surface-container)',
+  },
+  questionListLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'var(--color-outline)',
   },
   questionRow: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '10px',
+    padding: '10px 12px',
+    backgroundColor: 'var(--color-surface-container-low)',
+    borderBottom: '1px solid var(--color-outline-variant)',
   },
   questionLabel: {
     flexShrink: 0,
     width: '26px',
     fontSize: '12px',
-    fontWeight: '600',
-    color: '#6b7280',
-    paddingTop: '7px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    paddingTop: '6px',
     fontVariantNumeric: 'tabular-nums',
     userSelect: 'none',
   },
   questionTextarea: {
     flex: 1,
-    padding: '6px 9px',
-    borderRadius: '4px',
-    border: '1px solid #e5e7eb',
+    padding: '4px 8px',
+    border: 'none',
     fontSize: '13px',
-    color: '#111827',
+    color: 'var(--color-on-surface)',
     lineHeight: '1.55',
     fontFamily: 'inherit',
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     outline: 'none',
     width: '100%',
+  },
+  dragHandle: {
+    fontSize: '18px',
+    color: 'var(--color-outline)',
+    paddingTop: '4px',
+    flexShrink: 0,
+    cursor: 'default',
   },
   clearRow: {
     marginTop: '12px',
     textAlign: 'right',
+  },
+  clearLink: {
+    background: 'none',
+    border: 'none',
+    padding: '0',
+    fontSize: '12px',
+    color: 'var(--color-on-surface-variant)',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontFamily: 'inherit',
   },
 }

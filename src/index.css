@@ -80,6 +80,13 @@
   --color-on-tertiary-container:     #4a4a65;
 }
 
+/* ── Material Symbols Outlined ───────────────────────────────────────────── */
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
 /* ── Base ────────────────────────────────────────────────────────────────── */
 
 body {
@@ -125,6 +132,14 @@ textarea:focus-visible {
   outline-offset: 1px;
   border-color: var(--c-primary) !important;
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+/* Bottom-bar inputs (rounded-t-md, no full border) get only a border-bottom
+   focus highlight — suppress the full box outline. */
+.bottom-bar-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--color-primary) !important;
 }
 
 button:focus-visible {
