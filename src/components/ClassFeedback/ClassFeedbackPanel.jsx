@@ -7,10 +7,119 @@
  * Zone 4 — Teaching Implications → ImplicationsZone
  * Zone 5 — Performance Analytics → PerformanceDashboard
  */
+import { useState } from 'react'
 import DiagnosisZone from './DiagnosisZone'
 import ImplicationsZone from './ImplicationsZone'
 import PerformanceDashboard from './PerformanceDashboard'
 import { computeClassSummary } from '../../classUtils'
+
+/* ── Praise sub-component (needs local state for highlight) ─────────────── */
+function PraiseSection({ praiseList }) {
+  const [activeIdx, setActiveIdx] = useState(null)
+
+  const parsed = praiseList.map(item => {
+    const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
+    return { name: match ? match[1].trim() : item.trim(), reason: match ? match[2].trim() : null }
+  })
+
+  function toggleIdx(i) {
+    setActiveIdx(prev => (prev === i ? null : i))
+  }
+
+  return (
+    <>
+      {/* Name pills */}
+      <div style={praiseStyles.pillWrap}>
+        {parsed.map((p, i) => (
+          <span
+            key={i}
+            style={{
+              ...praiseStyles.pill,
+              ...(activeIdx === i ? praiseStyles.pillActive : {}),
+            }}
+            onClick={() => toggleIdx(i)}
+          >
+            {p.name}
+          </span>
+        ))}
+      </div>
+
+      {/* Per-student blocks */}
+      {parsed.some(p => p.reason) && (
+        <div style={praiseStyles.blockList}>
+          {parsed.map((p, i) => !p.reason ? null : (
+            <div
+              key={i}
+              style={{
+                ...praiseStyles.block,
+                ...(activeIdx === i ? praiseStyles.blockHighlighted : {}),
+              }}
+            >
+              <span style={praiseStyles.blockName}>{p.name}</span>
+              <p style={praiseStyles.blockText}>{p.reason}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+const praiseStyles = {
+  pillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '14px',
+  },
+  pill: {
+    display: 'inline-block',
+    backgroundColor: 'var(--color-primary-container)',
+    color: 'var(--color-on-primary-container)',
+    borderRadius: '20px',
+    padding: '4px 13px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    userSelect: 'none',
+    border: '2px solid transparent',
+    transition: 'border-color 0.15s, background-color 0.15s',
+  },
+  pillActive: {
+    border: '2px solid var(--color-primary)',
+    backgroundColor: 'var(--color-surface-dim)',
+  },
+  blockList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  block: {
+    padding: '10px 14px',
+    borderRadius: '8px',
+    backgroundColor: 'var(--color-surface-container-low)',
+    border: '1px solid rgba(93, 93, 120, 0.10)',
+    transition: 'background-color 0.2s, border-color 0.2s',
+  },
+  blockHighlighted: {
+    backgroundColor: 'var(--color-primary-container)',
+    border: '1px solid var(--color-outline-variant)',
+  },
+  blockName: {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    marginBottom: '4px',
+    letterSpacing: '0.01em',
+  },
+  blockText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: '1.55',
+    color: 'var(--color-on-surface-variant)',
+  },
+}
 
 export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData, questionStats, scoreDistribution }) {
   const today = new Date().toLocaleDateString('en-GB', {
@@ -156,27 +265,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                 <span className="material-symbols-outlined filled" style={styles.iconTertiary}>star</span>
                 <h3 style={styles.signalHeading}>Praise in class</h3>
               </div>
-              {praiseList.length > 0 ? (() => {
-                const parsed = praiseList.map(item => {
-                  const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
-                  return { name: match ? match[1] : item, reason: match ? match[2] : null }
-                })
-                const notes = parsed.filter(p => p.reason).map(p => `${p.name}: ${p.reason}`)
-                return (
-                  <>
-                    <div style={styles.praisePillWrap}>
-                      {parsed.map((p, i) => (
-                        <span key={i} style={styles.praisePill}>{p.name}</span>
-                      ))}
-                    </div>
-                    {notes.length > 0 && (
-                      <p style={styles.praiseHint}>{notes.join(' · ')}</p>
-                    )}
-                  </>
-                )
-              })() : (
-                <p style={styles.empty}>No students identified for praise.</p>
-              )}
+              {praiseList.length > 0
+                ? <PraiseSection praiseList={praiseList} />
+                : <p style={styles.empty}>No students identified for praise.</p>
+              }
             </div>
 
             {/* Students needing attention */}
