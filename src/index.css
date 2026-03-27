@@ -8,7 +8,7 @@
   box-sizing: border-box;
 }
 
-/* ── Custom properties ───────────────────────────────────────────────────── */
+/* ── Custom properties (existing app tokens) ─────────────────────────────── */
 
 :root {
   /* Colour */
@@ -52,6 +52,32 @@
 
   /* Shadows */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Shell design tokens (new shell components only) ─────────────────────── */
+
+:root {
+  --color-background:                #f9f9ff;
+  --color-surface:                   #f9f9ff;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #f0f3ff;
+  --color-surface-container:         #e7eeff;
+  --color-surface-container-high:    #dee8ff;
+  --color-surface-container-highest: #d5e3ff;
+  --color-primary:                   #455f88;
+  --color-primary-dim:               #39537c;
+  --color-primary-container:         #d6e3ff;
+  --color-on-primary:                #f6f7ff;
+  --color-on-primary-container:      #38527b;
+  --color-on-surface:                #083261;
+  --color-on-surface-variant:        #3f6091;
+  --color-outline:                   #5b7cae;
+  --color-outline-variant:           #93b3e9;
+  --color-error:                     #9f403d;
+  --color-error-container:           #fe8983;
+  --color-tertiary:                  #5d5d78;
+  --color-tertiary-container:        #d9d7f8;
+  --color-on-tertiary-container:     #4a4a65;
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
