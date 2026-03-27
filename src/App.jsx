@@ -21,6 +21,7 @@ function App() {
   const {
     questionTexts,
     questionPdfStatus,
+    pdfMeta,
     extractQuestionsFromPdf,
     clearQuestionTexts,
     updateQuestionText,
@@ -180,6 +181,7 @@ function App() {
             onReset={handleReset}
             questionTexts={questionTexts}
             questionPdfStatus={questionPdfStatus}
+            pdfMeta={pdfMeta}
             onPdfFile={extractQuestionsFromPdf}
             clearQuestionTexts={clearQuestionTexts}
             onQuestionChange={updateQuestionText}
@@ -224,7 +226,7 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.18b</p>
+      <p style={styles.version}>v0.19</p>
     </>
   )
 }
