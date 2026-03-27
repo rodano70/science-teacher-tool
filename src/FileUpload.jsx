@@ -66,7 +66,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    padding: '48px 32px',
+    padding: '28px 32px',
     border: '2px dashed var(--color-outline-variant)',
     borderRadius: '12px',
     backgroundColor: 'var(--color-surface-container-lowest)',

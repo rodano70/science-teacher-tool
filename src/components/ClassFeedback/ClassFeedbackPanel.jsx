@@ -87,32 +87,35 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
               {/* Avg tile — primary-container */}
               {classAvgPct != null && (
                 <div style={{ ...styles.statTile, ...styles.statTilePrimary }}>
+                  <span style={styles.tileMicroLabel}>Average</span>
                   <span style={{ ...styles.tileValue, color: 'var(--color-on-primary-container)' }}>{classAvgPct}%</span>
-                  <span style={{ ...styles.tileLabel, color: 'var(--color-on-primary-container)', opacity: 0.7 }}>avg</span>
                 </div>
               )}
 
               {/* Completers tile */}
               {completersCount != null && (
                 <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileMicroLabel}>Completers</span>
                   <span style={styles.tileValue}>{completersCount}</span>
-                  <span style={styles.tileLabel}>completers</span>
                 </div>
               )}
 
               {/* Range tile */}
               {minScore != null && maxScore != null && (
                 <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
-                  <span style={styles.tileValue}>{minScore}–{maxScore}</span>
-                  <span style={styles.tileLabel}>range / {summary.classTotalMax}</span>
+                  <span style={styles.tileMicroLabel}>Range</span>
+                  <span style={{ ...styles.tileValue, fontSize: '18px' }}>
+                    {minScore}–{maxScore}
+                    <span style={styles.tileRangeSuffix}>/{summary.classTotalMax}</span>
+                  </span>
                 </div>
               )}
 
               {/* Absent / non-completers tile */}
               {nonCompletersCount != null && nonCompletersCount > 0 && (
                 <div style={{ ...styles.statTile, ...styles.statTileAlert }}>
+                  <span style={{ ...styles.tileMicroLabel, color: 'var(--color-error)', opacity: 0.7 }}>Absent</span>
                   <span style={{ ...styles.tileValue, color: 'var(--color-error)' }}>{nonCompletersCount}</span>
-                  <span style={{ ...styles.tileLabel, color: 'var(--color-error)', opacity: 0.8 }}>absent</span>
                 </div>
               )}
 
@@ -124,6 +127,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                 <button style={styles.btnPrint} onClick={handlePrint}>
                   <span className="material-symbols-outlined" style={styles.btnIcon}>print</span>
                   Print
+                </button>
+                <button style={styles.btnIndividual}>
+                  <span className="material-symbols-outlined" style={styles.btnIcon}>person</span>
+                  Individual
                 </button>
               </div>
             </div>
@@ -145,7 +152,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
 
             {/* Praise in class */}
             <div style={styles.signalCard}>
-              <h3 style={styles.signalHeading}>Praise in class</h3>
+              <div style={styles.signalCardHeader}>
+                <span className="material-symbols-outlined filled" style={styles.iconTertiary}>star</span>
+                <h3 style={styles.signalHeading}>Praise in class</h3>
+              </div>
               {praiseList.length > 0 ? (() => {
                 const parsed = praiseList.map(item => {
                   const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
@@ -171,7 +181,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
 
             {/* Students needing attention */}
             <div style={styles.signalCard}>
-              <h3 style={styles.signalHeading}>Students needing attention</h3>
+              <div style={styles.signalCardHeader}>
+                <span className="material-symbols-outlined" style={styles.iconError}>person_alert</span>
+                <h3 style={styles.signalHeading}>Students needing attention</h3>
+              </div>
               {concernsList.length > 0 ? (
                 <div style={styles.concernsList}>
                   {concernsList.map((item, i) => {
@@ -184,7 +197,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                         borderBottom: i < concernsList.length - 1 ? '1px solid #f3f4f6' : 'none',
                       }}>
                         <span style={styles.concernName}>{name}</span>
-                        {label && <span style={styles.concernLabel}>{label}</span>}
+                        {label && <span style={styles.concernBadge}>{label}</span>}
                       </div>
                     )
                   })}
@@ -325,24 +338,42 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '10px',
-    padding: '10px 16px',
-    minWidth: '68px',
+    borderRadius: '12px',
+    padding: '12px 18px',
+    minWidth: '80px',
+    gap: '2px',
   },
   statTilePrimary: {
     backgroundColor: 'var(--color-primary-container)',
   },
   statTileSurface: {
     backgroundColor: 'var(--color-surface-container-low)',
+    border: '1px solid rgba(147, 179, 233, 0.20)',
   },
   statTileAlert: {
-    backgroundColor: 'rgba(254, 137, 131, 0.20)',
+    backgroundColor: 'rgba(254, 137, 131, 0.15)',
+    border: '1px solid rgba(159, 64, 61, 0.10)',
+  },
+  tileMicroLabel: {
+    fontSize: '9px',
+    fontWeight: '800',
+    color: 'var(--color-on-surface-variant)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    opacity: 0.7,
   },
   tileValue: {
-    fontSize: '16px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
-    lineHeight: '1.2',
+    fontSize: '22px',
+    fontWeight: '800',
+    color: 'var(--color-on-primary-container)',
+    lineHeight: '1.1',
+    letterSpacing: '-0.02em',
+  },
+  tileRangeSuffix: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface-variant)',
+    marginLeft: '1px',
   },
   tileLabel: {
     fontSize: '10px',
@@ -369,19 +400,33 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    backgroundColor: '#ffffff',
-    color: 'var(--color-on-surface)',
-    fontSize: '13px',
-    fontWeight: '600',
+    border: 'none',
+    background: 'linear-gradient(135deg, #455f88 0%, #39537c 100%)',
+    color: '#f6f7ff',
+    fontSize: '12px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    boxShadow: '0 2px 6px rgba(69, 95, 136, 0.18)',
+  },
+  btnIndividual: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    border: '2px solid var(--color-primary)',
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary)',
+    fontSize: '12px',
+    fontWeight: '700',
     cursor: 'pointer',
     letterSpacing: '0.01em',
   },
   btnIcon: {
     fontSize: '16px',
-    color: 'var(--color-on-surface-variant)',
   },
 
   /* ── Section label (shared) ──────────────────────────────────────────── */
@@ -411,8 +456,22 @@ const styles = {
     border: '1px solid rgba(93, 93, 120, 0.12)',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
+  signalCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '14px',
+  },
+  iconTertiary: {
+    fontSize: '20px',
+    color: 'var(--color-tertiary)',
+  },
+  iconError: {
+    fontSize: '20px',
+    color: 'var(--color-error)',
+  },
   signalHeading: {
-    margin: '0 0 14px',
+    margin: 0,
     fontSize: '13px',
     fontWeight: '700',
     color: 'var(--color-on-surface)',
@@ -466,6 +525,15 @@ const styles = {
     fontSize: '12px',
     color: '#6b7280',
     lineHeight: '1.5',
+  },
+  concernBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-error)',
+    backgroundColor: 'rgba(254, 137, 131, 0.18)',
+    padding: '2px 8px',
+    borderRadius: '6px',
+    whiteSpace: 'nowrap',
   },
   nonCompleterGroup: {
     marginTop: '12px',

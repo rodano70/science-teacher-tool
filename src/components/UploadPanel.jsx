@@ -64,10 +64,22 @@ export default function UploadPanel({
 
           {/* Student Marksheet section */}
           <div style={styles.marksheetCard}>
-            <h2 style={styles.cardHeading}>Student Marksheet</h2>
-            <p style={styles.cardDesc}>
-              Upload your Excel or CSV file containing student names and raw marks per question.
-            </p>
+            <div style={styles.questionCardHeader}>
+              <div>
+                <h2 style={styles.cardHeading}>Student Marksheet</h2>
+                <p style={styles.questionCardDesc}>
+                  Upload your Excel or CSV file containing student names and raw marks per question.
+                </p>
+              </div>
+              <div style={styles.descIconBadge}>
+                <span
+                  className="material-symbols-outlined"
+                  style={styles.descIcon}
+                >
+                  table_chart
+                </span>
+              </div>
+            </div>
             <FileUpload onDataParsed={onDataParsed} />
           </div>
 

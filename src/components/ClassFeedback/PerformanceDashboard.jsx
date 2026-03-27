@@ -1,10 +1,7 @@
-import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, Cell,
 } from 'recharts'
-
-const TABS = ['Overview', 'Per Question', 'Score Distribution']
 
 // Chart colours — do not change
 function barColor(pct) {
@@ -39,173 +36,145 @@ function DistributionTooltip({ active, payload, maxScore }) {
 }
 
 /**
- * PerformanceDashboard — tabbed chart panel (Zone 5).
- * Restyled to design-system surface tokens; chart colours unchanged.
+ * PerformanceDashboard — two-panel analytics layout (Zone 5).
+ * Left panel (col-8): per-question horizontal bar chart
+ * Right panel (col-4): score distribution vertical bar chart
  *
  * Props:
- *   statCards         — pre-computed values for the Overview stat cards
+ *   statCards         — pre-computed values (for distribution tooltip)
  *   questionStats     — [{label, pctCorrect}] for the Per Question chart
  *   scoreDistribution — [{score, count}] for the Score Distribution chart
  */
 export default function PerformanceDashboard({ statCards, questionStats, scoreDistribution }) {
-  const [activeTab, setActiveTab] = useState('Overview')
-
   const perQChartHeight = questionStats
-    ? Math.max(300, questionStats.length * 32 + 60)
-    : 300
+    ? Math.max(280, questionStats.length * 32 + 60)
+    : 280
 
   return (
     <div style={styles.wrapper}>
+      <div style={styles.grid}>
 
-      {/* ── Tab bar ── */}
-      <div style={styles.tabBar}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            style={{
-              ...styles.tab,
-              ...(activeTab === tab ? styles.tabActive : styles.tabInactive),
-            }}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+        {/* ── Left: Per-question chart ── */}
+        <div style={styles.chartPanel}>
+          <p style={styles.sectionLabel}>Percentage correct per question</p>
+          {questionStats && questionStats.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={perQChartHeight}>
+                <BarChart
+                  data={questionStats}
+                  layout="vertical"
+                  margin={{ top: 4, right: 40, bottom: 4, left: 8 }}
+                  barSize={14}
+                >
+                  <CartesianGrid horizontal={false} vertical={true} stroke="#f0f0f0" strokeDasharray="3 3" />
+                  <XAxis
+                    type="number"
+                    domain={[0, 100]}
+                    tickCount={6}
+                    tickFormatter={v => `${v}%`}
+                    tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={34}
+                    tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<QuestionTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
+                  <ReferenceLine
+                    x={80}
+                    stroke="#52a97d"
+                    strokeDasharray="4 3"
+                    strokeWidth={1.5}
+                    label={{ value: '80%', position: 'insideTopRight', fontSize: 10, fill: '#52a97d', dy: -4 }}
+                  />
+                  <ReferenceLine
+                    x={60}
+                    stroke="#e0993a"
+                    strokeDasharray="4 3"
+                    strokeWidth={1.5}
+                    label={{ value: '60%', position: 'insideTopRight', fontSize: 10, fill: '#e0993a', dy: -4 }}
+                  />
+                  <Bar dataKey="pctCorrect" radius={[0, 3, 3, 0]}>
+                    {questionStats.map((entry, i) => (
+                      <Cell key={i} fill={barColor(entry.pctCorrect)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              {/* Colour-coded legend */}
+              <div style={styles.legend}>
+                <span style={styles.legendItem}>
+                  <span style={{ ...styles.legendDot, backgroundColor: '#52a97d' }} />
+                  &gt;80% — secure
+                </span>
+                <span style={styles.legendItem}>
+                  <span style={{ ...styles.legendDot, backgroundColor: '#e0993a' }} />
+                  60–80% — developing
+                </span>
+                <span style={styles.legendItem}>
+                  <span style={{ ...styles.legendDot, backgroundColor: '#d95f5f' }} />
+                  &lt;60% — reteach
+                </span>
+              </div>
+            </>
+          ) : (
+            <p style={styles.empty}>No question data available.</p>
+          )}
+        </div>
+
+        {/* ── Right: Score distribution ── */}
+        <div style={{ ...styles.chartPanel, display: 'flex', flexDirection: 'column' }}>
+          <p style={styles.sectionLabel}>Score distribution</p>
+          {scoreDistribution && scoreDistribution.length > 0 ? (
+            <>
+              <div style={{ flex: 1, minHeight: '160px' }}>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart
+                    data={scoreDistribution}
+                    margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
+                    barSize={Math.max(8, Math.min(28, Math.floor(220 / scoreDistribution.length) - 4))}
+                  >
+                    <CartesianGrid vertical={false} stroke="#f0f0f0" strokeDasharray="3 3" />
+                    <XAxis
+                      type="category"
+                      dataKey="score"
+                      tick={{ fontSize: 10, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 10, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={24}
+                    />
+                    <Tooltip
+                      content={<DistributionTooltip maxScore={statCards.classTotalMax} />}
+                      cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                    />
+                    <Bar dataKey="count" fill="#5b8dd9" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p style={styles.distributionNote}>
+                {scoreDistribution.length > 0 && (() => {
+                  const peak = scoreDistribution.reduce((a, b) => b.count > a.count ? b : a, scoreDistribution[0])
+                  return `Most students scoring around ${peak.score}/${statCards.classTotalMax}.`
+                })()}
+              </p>
+            </>
+          ) : (
+            <p style={styles.empty}>No score data available.</p>
+          )}
+        </div>
+
       </div>
-
-      {/* ── Overview ── */}
-      {activeTab === 'Overview' && (
-        <div style={styles.chartPanel}>
-          <p style={styles.sectionLabel}>CLASS SUMMARY</p>
-          <div style={styles.statsRow}>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{statCards.classAvgPct}%</span>
-              <span style={styles.statLabel}>Class Average</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{statCards.completersCount}</span>
-              <span style={styles.statLabel}>Completers</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{statCards.nonCompletersCount}</span>
-              <span style={styles.statLabel}>Non-completers</span>
-            </div>
-            <div style={styles.statCard}>
-              <span style={styles.statValueRange}>
-                {statCards.minScore} &mdash; {statCards.maxScore}
-              </span>
-              <span style={styles.statLabel}>
-                Score range · out of {statCards.classTotalMax}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Per Question ── */}
-      {activeTab === 'Per Question' && (
-        <div style={styles.chartPanel}>
-          <p style={styles.sectionLabel}>PERFORMANCE BY QUESTION</p>
-          <ResponsiveContainer width="100%" height={perQChartHeight}>
-            <BarChart
-              data={questionStats}
-              layout="vertical"
-              margin={{ top: 4, right: 32, bottom: 4, left: 8 }}
-              barSize={16}
-            >
-              <CartesianGrid horizontal={false} vertical={true} stroke="#f0f0f0" strokeDasharray="3 3" />
-              <XAxis
-                type="number"
-                domain={[0, 100]}
-                tickCount={6}
-                tickFormatter={v => `${v}%`}
-                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
-                axisLine={{ stroke: '#e5e7eb' }}
-                tickLine={false}
-              />
-              <YAxis
-                type="category"
-                dataKey="label"
-                width={34}
-                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<QuestionTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
-              <ReferenceLine
-                x={80}
-                stroke="#52a97d"
-                strokeDasharray="4 3"
-                strokeWidth={1.5}
-                label={{ value: '80%', position: 'insideTopRight', fontSize: 10, fill: '#52a97d', dy: -4 }}
-              />
-              <ReferenceLine
-                x={60}
-                stroke="#e0993a"
-                strokeDasharray="4 3"
-                strokeWidth={1.5}
-                label={{ value: '60%', position: 'insideTopRight', fontSize: 10, fill: '#e0993a', dy: -4 }}
-              />
-              <Bar dataKey="pctCorrect" radius={[0, 3, 3, 0]}>
-                {questionStats.map((entry, i) => (
-                  <Cell key={i} fill={barColor(entry.pctCorrect)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          {/* Colour-coded legend */}
-          <div style={styles.legend}>
-            <span style={styles.legendItem}>
-              <span style={{ ...styles.legendDot, backgroundColor: '#52a97d' }} />
-              &gt;80% — secure
-            </span>
-            <span style={styles.legendItem}>
-              <span style={{ ...styles.legendDot, backgroundColor: '#e0993a' }} />
-              60–80% — developing
-            </span>
-            <span style={styles.legendItem}>
-              <span style={{ ...styles.legendDot, backgroundColor: '#d95f5f' }} />
-              &lt;60% — reteach
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Score Distribution ── */}
-      {activeTab === 'Score Distribution' && (
-        <div style={styles.chartPanel}>
-          <p style={styles.sectionLabel}>SCORE DISTRIBUTION</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart
-              data={scoreDistribution}
-              margin={{ top: 4, right: 24, bottom: 4, left: 0 }}
-              barSize={28}
-            >
-              <CartesianGrid vertical={false} stroke="#f0f0f0" strokeDasharray="3 3" />
-              <XAxis
-                type="category"
-                dataKey="score"
-                tick={{ fontSize: 12, fontFamily: 'Inter, sans-serif', fill: '#374151' }}
-                axisLine={{ stroke: '#e5e7eb' }}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#6b7280' }}
-                axisLine={false}
-                tickLine={false}
-                width={28}
-              />
-              <Tooltip
-                content={<DistributionTooltip maxScore={statCards.classTotalMax} />}
-                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-              />
-              <Bar dataKey="count" fill="#5b8dd9" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
     </div>
   )
 }
@@ -221,47 +190,23 @@ const tooltipStyle = {
 }
 
 const styles = {
-  /* Outer wrapper — no background; sits on the page surface */
   wrapper: {
     padding: '0 24px 24px',
   },
 
-  /* Tab bar */
-  tabBar: {
-    display: 'inline-flex',
-    gap: '2px',
-    padding: '4px',
-    backgroundColor: 'var(--color-surface-container-low)',
-    borderRadius: '8px',
-    marginBottom: '16px',
-  },
-  tab: {
-    padding: '8px 16px',
-    fontSize: '13px',
-    fontWeight: '500',
-    border: 'none',
-    background: 'transparent',
-    cursor: 'pointer',
-    letterSpacing: '0.01em',
-    lineHeight: '1',
-    borderRadius: '6px',
-    transition: 'background-color 0.15s, color 0.15s, box-shadow 0.15s',
-  },
-  tabActive: {
-    backgroundColor: 'var(--color-surface-container-lowest)',
-    color: 'var(--color-on-surface)',
-    fontWeight: '600',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-  },
-  tabInactive: {
-    color: 'var(--color-on-surface-variant)',
+  /* Two-column grid — matches 8/12 + 4/12 mockup proportions */
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    gap: '16px',
+    alignItems: 'start',
   },
 
   /* Chart panels */
   chartPanel: {
     backgroundColor: 'var(--color-surface-container-lowest)',
     borderRadius: '12px',
-    padding: '24px 32px',
+    padding: '24px 28px',
     border: '1px solid rgba(147, 179, 233, 0.20)',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
@@ -276,48 +221,13 @@ const styles = {
     color: 'var(--color-on-surface-variant)',
   },
 
-  /* Overview stat cards */
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '12px',
-  },
-  statCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '16px 12px',
-    backgroundColor: 'var(--color-surface-container-low)',
-    borderRadius: '8px',
-    gap: '5px',
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: '26px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
-    lineHeight: '1',
-  },
-  statValueRange: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
-    lineHeight: '1',
-  },
-  statLabel: {
-    fontSize: '11px',
-    fontWeight: '500',
-    color: 'var(--color-on-surface-variant)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-
   /* Legend */
   legend: {
     display: 'flex',
-    gap: '20px',
+    gap: '16px',
     marginTop: '14px',
+    paddingTop: '14px',
+    borderTop: '1px solid rgba(147, 179, 233, 0.20)',
     flexWrap: 'wrap',
   },
   legendItem: {
@@ -332,5 +242,21 @@ const styles = {
     height: '8px',
     borderRadius: '50%',
     flexShrink: 0,
+  },
+
+  /* Distribution note */
+  distributionNote: {
+    margin: '14px 0 0',
+    fontSize: '12px',
+    color: 'var(--color-on-surface-variant)',
+    fontStyle: 'italic',
+    lineHeight: '1.5',
+  },
+
+  empty: {
+    margin: 0,
+    fontSize: '13px',
+    color: '#9ca3af',
+    fontStyle: 'italic',
   },
 }

@@ -15,45 +15,49 @@ export default function AppShell({ children }) {
         {/* TOOLS section */}
         <nav style={styles.navSection}>
           <p style={styles.navSectionLabel}>TOOLS</p>
+          <p style={styles.navSectionSubLabel}>Academic Curator</p>
 
           {/* Active item */}
           <div style={styles.navItemActive}>
-            <span style={styles.navItemIcon}>🔬</span>
+            <span className="material-symbols-outlined" style={styles.navItemIconMs}>biotech</span>
             <span style={styles.navItemLabel}>Science Feedback</span>
           </div>
 
           {/* Greyed items */}
           <div style={styles.navItemDisabled}>
-            <span style={styles.navItemIcon}>📋</span>
+            <span className="material-symbols-outlined" style={styles.navItemIconMs}>edit_calendar</span>
             <span style={styles.navItemLabel}>Lesson Planner</span>
             <span style={styles.soonBadge}>Soon</span>
           </div>
 
           <div style={styles.navItemDisabled}>
-            <span style={styles.navItemIcon}>✏️</span>
+            <span className="material-symbols-outlined" style={styles.navItemIconMs}>description</span>
             <span style={styles.navItemLabel}>Report Writer</span>
             <span style={styles.soonBadge}>Soon</span>
           </div>
         </nav>
 
         {/* LIBRARY section */}
-        <nav style={{ ...styles.navSection, marginTop: '8px' }}>
+        <nav style={{ ...styles.navSection, marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-surface-container)' }}>
           <p style={styles.navSectionLabel}>LIBRARY</p>
 
           <div style={styles.navItemInactive}>
-            <span style={styles.navItemIcon}>📚</span>
+            <span className="material-symbols-outlined" style={styles.navItemIconMs}>library_books</span>
             <span style={styles.navItemLabel}>Library</span>
           </div>
 
           <div style={styles.navItemInactive}>
-            <span style={styles.navItemIcon}>🗄️</span>
+            <span className="material-symbols-outlined" style={styles.navItemIconMs}>inventory_2</span>
             <span style={styles.navItemLabel}>Archive</span>
           </div>
         </nav>
 
         {/* Help Centre — pinned to bottom */}
         <div style={styles.sidebarFooter}>
-          <a href="#" style={styles.helpLink}>Help Centre</a>
+          <a href="#" style={styles.helpLink}>
+            <span className="material-symbols-outlined" style={styles.helpIcon}>help</span>
+            Help Centre
+          </a>
         </div>
 
       </aside>
@@ -76,8 +80,7 @@ export default function AppShell({ children }) {
               </svg>
             </button>
             <div style={styles.avatar}>
-              <div style={styles.avatarCircle}>DS</div>
-              <span style={styles.avatarName}>Dr. Smith</span>
+              <span className="material-symbols-outlined" style={styles.avatarIcon}>account_circle</span>
             </div>
           </div>
         </header>
@@ -104,7 +107,7 @@ export default function AppShell({ children }) {
   )
 }
 
-const steps = ['1. Upload', '2. Grades', '3. Feedback', '4. Dashboard']
+const steps = ['1. Upload', '2. Feedback', '3. Dashboard']
 
 /* ── Styles ─────────────────────────────────────────────────────────────── */
 
@@ -185,6 +188,19 @@ const styles = {
     width: '20px',
     textAlign: 'center',
   },
+  navItemIconMs: {
+    fontSize: '20px',
+    flexShrink: 0,
+    color: 'var(--color-on-surface)',
+  },
+  navSectionSubLabel: {
+    margin: '0 12px 6px',
+    fontSize: '9px',
+    fontWeight: '500',
+    letterSpacing: '0.05em',
+    color: 'var(--color-on-surface-variant)',
+    opacity: 0.5,
+  },
   navItemLabel: {
     flex: 1,
     fontSize: '13px',
@@ -205,10 +221,16 @@ const styles = {
     padding: '16px 20px 0',
   },
   helpLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
     fontSize: '12px',
     color: 'var(--color-on-surface-variant)',
     textDecoration: 'none',
     opacity: 0.7,
+  },
+  helpIcon: {
+    fontSize: '18px',
   },
 
   /* Main column */
@@ -283,22 +305,8 @@ const styles = {
     gap: '8px',
     cursor: 'pointer',
   },
-  avatarCircle: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '50%',
-    backgroundColor: 'var(--color-primary-container)',
-    color: 'var(--color-on-primary-container)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '11px',
-    fontWeight: '700',
-    flexShrink: 0,
-  },
-  avatarName: {
-    fontSize: '13px',
-    fontWeight: '500',
+  avatarIcon: {
+    fontSize: '30px',
     color: 'var(--color-on-surface)',
   },
 
