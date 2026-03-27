@@ -1,8 +1,14 @@
 /**
- * WCFSheet — renders the Whole Class Feedback sheet from the structured JSON
- * returned by Claude. Six sections matching the school WCF template.
+ * ClassFeedbackPanel — Whole Class Feedback sheet, four-zone layout.
+ *
+ * Zone 1 — Context header (identity block + stat tiles + action buttons)
+ * Zone 2 — Assessment Diagnosis  → DiagnosisZone
+ * Zone 3 — Individual Signals    → inline (praise + concerns)
+ * Zone 4 — Teaching Implications → ImplicationsZone
+ * Zone 5 — Performance Analytics → PerformanceDashboard
  */
-import FeedbackSection from './FeedbackSection'
+import DiagnosisZone from './DiagnosisZone'
+import ImplicationsZone from './ImplicationsZone'
 import PerformanceDashboard from './PerformanceDashboard'
 import { computeClassSummary } from '../../classUtils'
 
@@ -31,97 +37,193 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
     classTotalMax: summary.classTotalMax,
   } : null
 
+  const nonCompleters = summary ? summary.nonCompleters : []
+
+  // Parse praise and concerns — strings formatted as "Name — reason" or "Name: reason"
+  const toArray = v => Array.isArray(v) ? v : (v ? [v] : [])
+  const praiseList = toArray(data.students_to_praise)
+  const concernsList = toArray(data.individual_concerns)
+
   function handlePrint() {
     window.print()
   }
 
   return (
     <div style={styles.wrapper}>
-      {/* Print button — hidden when actually printing via @media print */}
-      <div style={styles.printBar} className="no-print">
-        <button className="btn-print" style={styles.printButton} onClick={handlePrint}>
-          Print / Save as PDF
-        </button>
+
+      {/* ── Print-only header (hidden on screen, shown in print) ───────── */}
+      <div className="print-only" style={styles.printHeader}>
+        <span style={styles.printWordmark}>TeacherDesk</span>
+        <span style={styles.printMeta}>{examBoard} {subject} — {topic} · {today}</span>
+        <div style={styles.printPills}>
+          {classAvgPct != null && (
+            <span style={styles.printPill}>{classAvgPct}% avg</span>
+          )}
+          {completersCount != null && (
+            <span style={styles.printPill}>{completersCount} completers</span>
+          )}
+          {minScore != null && maxScore != null && (
+            <span style={styles.printPill}>{minScore}–{maxScore} range</span>
+          )}
+        </div>
       </div>
 
       <div style={styles.sheet} id="wcf-sheet">
-        {/* Header */}
-        <div style={styles.header}>
-          <h2 style={styles.title}>Whole Class Feedback Sheet</h2>
-          <div style={styles.meta}>
-            <span>{examBoard} {subject} — {topic}</span>
-            <span style={styles.date}>{today}</span>
+
+        {/* ── Zone 1: Context header ─────────────────────────────────────── */}
+        <div style={styles.zone1}>
+
+          {/* Identity block */}
+          <div style={styles.headerIdentity}>
+            <p style={styles.headerEyebrow}>Class Feedback · {today}</p>
+            <h2 style={styles.headerTitle}>{topic || 'Whole Class Feedback'}</h2>
+            <p style={styles.headerSubtitle}>{examBoard} {subject}</p>
+          </div>
+
+          {/* Stat tiles + actions */}
+          {statCards && (
+            <div style={styles.headerControls}>
+
+              {/* Avg tile — primary-container */}
+              {classAvgPct != null && (
+                <div style={{ ...styles.statTile, ...styles.statTilePrimary }}>
+                  <span style={{ ...styles.tileValue, color: 'var(--color-on-primary-container)' }}>{classAvgPct}%</span>
+                  <span style={{ ...styles.tileLabel, color: 'var(--color-on-primary-container)', opacity: 0.7 }}>avg</span>
+                </div>
+              )}
+
+              {/* Completers tile */}
+              {completersCount != null && (
+                <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileValue}>{completersCount}</span>
+                  <span style={styles.tileLabel}>completers</span>
+                </div>
+              )}
+
+              {/* Range tile */}
+              {minScore != null && maxScore != null && (
+                <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileValue}>{minScore}–{maxScore}</span>
+                  <span style={styles.tileLabel}>range / {summary.classTotalMax}</span>
+                </div>
+              )}
+
+              {/* Absent / non-completers tile */}
+              {nonCompletersCount != null && nonCompletersCount > 0 && (
+                <div style={{ ...styles.statTile, ...styles.statTileAlert }}>
+                  <span style={{ ...styles.tileValue, color: 'var(--color-error)' }}>{nonCompletersCount}</span>
+                  <span style={{ ...styles.tileLabel, color: 'var(--color-error)', opacity: 0.8 }}>absent</span>
+                </div>
+              )}
+
+              {/* Vertical divider */}
+              <div style={styles.headerVDivider} />
+
+              {/* Action buttons */}
+              <div style={styles.headerActions} className="no-print">
+                <button style={styles.btnPrint} onClick={handlePrint}>
+                  <span className="material-symbols-outlined" style={styles.btnIcon}>print</span>
+                  Print
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* ── Zone 2: Assessment Diagnosis ──────────────────────────────── */}
+        <DiagnosisZone
+          successes={data.key_successes}
+          misconceptions={data.key_misconceptions}
+          little_errors={data.little_errors}
+        />
+
+        {/* ── Zone 3: Individual Signals ────────────────────────────────── */}
+        <div style={styles.signalsZone}>
+          <p style={styles.sectionLabel}>Individual Signals</p>
+          <div style={styles.signalsGrid}>
+
+            {/* Praise in class */}
+            <div style={styles.signalCard}>
+              <h3 style={styles.signalHeading}>Praise in class</h3>
+              {praiseList.length > 0 ? (() => {
+                const parsed = praiseList.map(item => {
+                  const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
+                  return { name: match ? match[1] : item, reason: match ? match[2] : null }
+                })
+                const notes = parsed.filter(p => p.reason).map(p => `${p.name}: ${p.reason}`)
+                return (
+                  <>
+                    <div style={styles.praisePillWrap}>
+                      {parsed.map((p, i) => (
+                        <span key={i} style={styles.praisePill}>{p.name}</span>
+                      ))}
+                    </div>
+                    {notes.length > 0 && (
+                      <p style={styles.praiseHint}>{notes.join(' · ')}</p>
+                    )}
+                  </>
+                )
+              })() : (
+                <p style={styles.empty}>No students identified for praise.</p>
+              )}
+            </div>
+
+            {/* Students needing attention */}
+            <div style={styles.signalCard}>
+              <h3 style={styles.signalHeading}>Students needing attention</h3>
+              {concernsList.length > 0 ? (
+                <div style={styles.concernsList}>
+                  {concernsList.map((item, i) => {
+                    const parts = item.split(/\s+[—–-]\s+/)
+                    const name = parts[0] ?? item
+                    const label = parts[1] ?? null
+                    return (
+                      <div key={i} style={{
+                        ...styles.concernRow,
+                        borderBottom: i < concernsList.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      }}>
+                        <span style={styles.concernName}>{name}</span>
+                        {label && <span style={styles.concernLabel}>{label}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p style={styles.empty}>No individual concerns identified.</p>
+              )}
+              {/* Non-completers group at bottom */}
+              {nonCompleters.length > 0 && (
+                <div style={styles.nonCompleterGroup}>
+                  <span style={styles.nonCompleterLabel}>Non-completers:</span>
+                  <span style={styles.nonCompleterNames}>
+                    {nonCompleters.join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
 
-        {/* Performance dashboard — tabs: Overview / Per Question / Score Distribution */}
+        {/* ── Zone 4: Teaching Implications ────────────────────────────── */}
+        <ImplicationsZone
+          immediate_action={data.immediate_action}
+          long_term_implications={data.long_term_implications}
+        />
+
+        {/* ── Zone 5: Performance Analytics ─────────────────────────────── */}
         {statCards && (
-          <PerformanceDashboard
-            statCards={statCards}
-            questionStats={questionStats}
-            scoreDistribution={scoreDistribution}
-          />
+          <div style={styles.analyticsZone} className="no-print">
+            <p style={styles.sectionLabel}>Performance Analytics</p>
+            <PerformanceDashboard
+              statCards={statCards}
+              questionStats={questionStats}
+              scoreDistribution={scoreDistribution}
+            />
+          </div>
         )}
 
-        {/* Section 1: Key Successes */}
-        <FeedbackSection
-          number="1"
-          title="Key Successes"
-          color="#166534"
-          bg="#f0fdf4"
-          border="#bbf7d0"
-          items={data.key_successes}
-        />
-
-        {/* Section 2: Key Misconceptions */}
-        <FeedbackSection
-          number="2"
-          title="Key Misconceptions & Reteach Actions"
-          color="#9a3412"
-          bg="#fff7ed"
-          border="#fed7aa"
-          items={data.key_misconceptions}
-        />
-
-        {/* Section 3: Individual Student Concerns */}
-        <FeedbackSection
-          number="3"
-          title="Individual Student Concerns"
-          color="#1e40af"
-          bg="#eff6ff"
-          border="#bfdbfe"
-          items={data.individual_concerns}
-        />
-
-        {/* Section 4: Little Errors */}
-        <FeedbackSection
-          number="4"
-          title="Little Errors (Command Words, Units, Spelling)"
-          color="#6b21a8"
-          bg="#faf5ff"
-          border="#e9d5ff"
-          items={data.little_errors}
-        />
-
-        {/* Section 5: Students to Praise */}
-        <FeedbackSection
-          number="5"
-          title="Students to Praise"
-          color="#065f46"
-          bg="#ecfdf5"
-          border="#a7f3d0"
-          items={data.students_to_praise}
-        />
-
-        {/* Section 6: Long-term Implications */}
-        <FeedbackSection
-          number="6"
-          title="Long-term Implications (Scheme of Work)"
-          color="#7c2d12"
-          bg="#fff7ed"
-          border="#fed7aa"
-          items={data.long_term_implications}
-        />
       </div>
     </div>
   )
@@ -133,22 +235,42 @@ const styles = {
     borderTop: '1px solid #f3f4f6',
     paddingTop: '28px',
   },
-  printBar: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginBottom: '14px',
+
+  /* ── Print-only header ───────────────────────────────────────────────── */
+  printHeader: {
+    display: 'none', // overridden by .print-only in @media print
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0 0 12px',
+    borderBottom: '1px solid #ccc',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
-  printButton: {
-    padding: '9px 20px',
-    borderRadius: '5px',
-    border: 'none',
-    backgroundColor: '#374151',
-    color: '#fff',
+  printWordmark: {
     fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    letterSpacing: '0.01em',
+    fontWeight: '700',
+    color: '#1e3150',
   },
+  printMeta: {
+    fontSize: '12px',
+    color: '#374151',
+    flex: 1,
+    textAlign: 'center',
+  },
+  printPills: {
+    display: 'flex',
+    gap: '8px',
+  },
+  printPill: {
+    fontSize: '11px',
+    padding: '2px 8px',
+    backgroundColor: '#f3f4f6',
+    borderRadius: '4px',
+    color: '#374151',
+  },
+
+  /* ── Sheet container ─────────────────────────────────────────────────── */
   sheet: {
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
@@ -156,26 +278,229 @@ const styles = {
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
   },
-  header: {
-    backgroundColor: '#1e3150',
-    color: '#ffffff',
-    padding: '20px 24px',
+
+  /* ── Zone 1: Context header ──────────────────────────────────────────── */
+  zone1: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: '24px',
+    padding: '24px 24px 20px',
+    borderBottom: '1px solid #e5e7eb',
+    flexWrap: 'wrap',
   },
-  title: {
-    margin: '0 0 6px',
-    fontSize: '17px',
+  headerIdentity: {
+    flex: '1 1 200px',
+  },
+  headerEyebrow: {
+    margin: '0 0 4px',
+    fontSize: '11px',
+    fontWeight: '600',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--color-on-surface-variant)',
+  },
+  headerTitle: {
+    margin: '0 0 4px',
+    fontSize: '20px',
     fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '-0.01em',
+    lineHeight: '1.25',
+  },
+  headerSubtitle: {
+    margin: 0,
+    fontSize: '13px',
+    color: 'var(--color-on-surface-variant)',
+  },
+  headerControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+    flexShrink: 0,
+  },
+  statTile: {
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '10px',
+    padding: '10px 16px',
+    minWidth: '68px',
+  },
+  statTilePrimary: {
+    backgroundColor: 'var(--color-primary-container)',
+  },
+  statTileSurface: {
+    backgroundColor: 'var(--color-surface-container-low)',
+  },
+  statTileAlert: {
+    backgroundColor: 'rgba(254, 137, 131, 0.20)',
+  },
+  tileValue: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    lineHeight: '1.2',
+  },
+  tileLabel: {
+    fontSize: '10px',
+    fontWeight: '500',
+    color: 'var(--color-on-surface-variant)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginTop: '2px',
+  },
+  headerVDivider: {
+    width: '1px',
+    height: '40px',
+    backgroundColor: '#e5e7eb',
+    flexShrink: 0,
+    alignSelf: 'center',
+    margin: '0 4px',
+  },
+  headerActions: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  btnPrint: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    backgroundColor: '#ffffff',
+    color: 'var(--color-on-surface)',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
     letterSpacing: '0.01em',
   },
-  meta: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '13px',
-    color: '#93c5fd',
-    flexWrap: 'wrap',
-    gap: '8px',
+  btnIcon: {
+    fontSize: '16px',
+    color: 'var(--color-on-surface-variant)',
   },
-  date: {
-    color: '#7dd3fc',
+
+  /* ── Section label (shared) ──────────────────────────────────────────── */
+  sectionLabel: {
+    margin: '0 0 14px',
+    fontSize: '10px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    color: 'var(--color-on-surface-variant)',
+  },
+
+  /* ── Zone 3: Individual Signals ──────────────────────────────────────── */
+  signalsZone: {
+    padding: '20px 24px',
+    borderTop: '1px solid #e5e7eb',
+  },
+  signalsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+  },
+  signalCard: {
+    backgroundColor: 'var(--color-surface-container-lowest)',
+    borderRadius: '12px',
+    padding: '18px 20px',
+    border: '1px solid rgba(93, 93, 120, 0.12)',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+  },
+  signalHeading: {
+    margin: '0 0 14px',
+    fontSize: '13px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '0.01em',
+  },
+
+  /* Praise pills */
+  praisePillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '10px',
+  },
+  praisePill: {
+    display: 'inline-block',
+    backgroundColor: 'var(--color-primary-container)',
+    color: 'var(--color-on-primary-container)',
+    borderRadius: '20px',
+    padding: '3px 12px',
+    fontSize: '12px',
+    fontWeight: '600',
+  },
+  praiseHint: {
+    margin: 0,
+    fontSize: '12px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    lineHeight: '1.5',
+  },
+
+  /* Concern rows */
+  concernsList: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  concernRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: '10px',
+    padding: '8px 0',
+    flexWrap: 'wrap',
+  },
+  concernName: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface)',
+    flexShrink: 0,
+  },
+  concernLabel: {
+    fontSize: '12px',
+    color: '#6b7280',
+    lineHeight: '1.5',
+  },
+  nonCompleterGroup: {
+    marginTop: '12px',
+    paddingTop: '10px',
+    borderTop: '1px solid #f3f4f6',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    alignItems: 'flex-start',
+  },
+  nonCompleterLabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    flexShrink: 0,
+  },
+  nonCompleterNames: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    fontStyle: 'italic',
+  },
+
+  /* ── Zone 5: Analytics ───────────────────────────────────────────────── */
+  analyticsZone: {
+    borderTop: '1px solid #e5e7eb',
+    padding: '20px 24px 0',
+  },
+
+  /* ── Shared ──────────────────────────────────────────────────────────── */
+  empty: {
+    margin: 0,
+    fontSize: '13px',
+    color: '#9ca3af',
+    fontStyle: 'italic',
   },
 }

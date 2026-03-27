@@ -65,7 +65,7 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 Class data summary:
 ${summaryText}
 
-Generate a Whole Class Feedback sheet. Return ONLY a valid JSON object with exactly these six keys. No preamble, no markdown fences, no extra text — just the JSON.
+Generate a Whole Class Feedback sheet. Return ONLY a valid JSON object with exactly these seven keys. No preamble, no markdown fences, no extra text — just the JSON.
 
 {
   "key_successes": ["array of bullet-point strings describing what the class did well"],
@@ -73,7 +73,8 @@ Generate a Whole Class Feedback sheet. Return ONLY a valid JSON object with exac
   "individual_concerns": ["array of strings, each naming a specific student and their concern — use the student names from the data"],
   "little_errors": ["array of bullet-point strings about small mistakes: command words, units, spelling, working out"],
   "students_to_praise": ["array of strings, each naming a student and why they should be praised"],
-  "long_term_implications": ["array of bullet-point strings about scheme-of-work or teaching changes to make"]
+  "long_term_implications": ["array of bullet-point strings about scheme-of-work or teaching changes to make"],
+  "immediate_action": "one specific thing the teacher should do in the next lesson to address the main misconception"
 }
 
 Base your analysis on the question averages and student performance data provided. Be specific and curriculum-relevant for ${examBoard} ${subject}.`

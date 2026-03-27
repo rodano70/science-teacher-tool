@@ -17,10 +17,12 @@ function readFileAsBase64(file) {
 export function usePdfExtraction() {
   const [questionTexts, setQuestionTexts] = useState([])
   const [questionPdfStatus, setQuestionPdfStatus] = useState('idle') // 'idle' | 'loading' | 'ready' | 'error'
+  const [pdfMeta, setPdfMeta] = useState(null) // { examBoard, subject, topic } — nulls filtered out
 
   function clearQuestionTexts() {
     setQuestionTexts([])
     setQuestionPdfStatus('idle')
+    setPdfMeta(null)
   }
 
   async function extractQuestionsFromPdf(file) {
@@ -38,7 +40,7 @@ export function usePdfExtraction() {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1000,
+          max_tokens: 2000,
           messages: [
             {
               role: 'user',
@@ -53,7 +55,16 @@ export function usePdfExtraction() {
                 },
                 {
                   type: 'text',
-                  text: 'Extract all exam questions from this document. Return only a JSON array of strings, one string per question, in order. Each string should be the full question text including any sub-parts. Return nothing else — no preamble, no markdown fences, just the raw JSON array.',
+                  text: `Extract information from this exam question paper and return a single JSON object with exactly these four keys:
+
+{
+  "examBoard": "the exam board name (e.g. AQA, Edexcel, OCR, WJEC) — return null if not clearly stated",
+  "subject": "the science subject (e.g. Biology, Chemistry, Physics, Combined Science) — return null if not clearly stated",
+  "topic": "the specific topic or unit title — return null if not clearly stated",
+  "questions": ["array of full question strings, one per question, in order"]
+}
+
+Return null for examBoard, subject, or topic if the document does not contain clear evidence for that field — never guess. Return only the raw JSON object with no preamble, no markdown fences, no extra text.`,
                 },
               ],
             },
@@ -70,7 +81,19 @@ export function usePdfExtraction() {
       let rawText = data.content?.[0]?.text ?? ''
       rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()
       const parsed = JSON.parse(rawText)
-      setQuestionTexts(parsed)
+
+      // Populate questions array (unchanged behaviour)
+      if (Array.isArray(parsed.questions)) {
+        setQuestionTexts(parsed.questions)
+      }
+
+      // Build pdfMeta — only include non-null fields
+      const meta = {}
+      if (parsed.examBoard != null) meta.examBoard = parsed.examBoard
+      if (parsed.subject != null) meta.subject = parsed.subject
+      if (parsed.topic != null) meta.topic = parsed.topic
+      setPdfMeta(Object.keys(meta).length > 0 ? meta : null)
+
       setQuestionPdfStatus('ready')
     } catch (err) {
       console.error('PDF extraction failed:', err)
@@ -82,5 +105,5 @@ export function usePdfExtraction() {
     setQuestionTexts(prev => prev.map((q, i) => (i === index ? text : q)))
   }
 
-  return { questionTexts, questionPdfStatus, extractQuestionsFromPdf, clearQuestionTexts, updateQuestionText }
+  return { questionTexts, questionPdfStatus, pdfMeta, extractQuestionsFromPdf, clearQuestionTexts, updateQuestionText }
 }

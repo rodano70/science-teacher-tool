@@ -1,5 +1,9 @@
+import { useEffect } from 'react'
 import FileUpload from '../FileUpload'
 import PdfDropZone from './PdfDropZone'
+
+const VALID_EXAM_BOARDS = { aqa: 'AQA', edexcel: 'Edexcel', ocr: 'OCR', wjec: 'WJEC' }
+const VALID_SUBJECTS = { biology: 'Biology', chemistry: 'Chemistry', physics: 'Physics', 'combined science': 'Combined Science' }
 
 export default function UploadPanel({
   examBoard, setExamBoard,
@@ -9,6 +13,7 @@ export default function UploadPanel({
   studentData,
   onDataParsed,
   onReset,
+  pdfMeta,
   questionTexts,
   questionPdfStatus,
   onPdfFile,
@@ -17,6 +22,27 @@ export default function UploadPanel({
   wcfLoading, wcfProgress, onGenerateWCF,
   feedbackLoading, feedbackProgress, onGenerateFeedback,
 }) {
+  // Pre-populate form fields from PDF metadata when it arrives
+  useEffect(() => {
+    if (!pdfMeta) return
+    if (pdfMeta.examBoard) {
+      const canonical = VALID_EXAM_BOARDS[pdfMeta.examBoard.toLowerCase()]
+      if (canonical) setExamBoard(canonical)
+    }
+    if (pdfMeta.subject) {
+      const canonical = VALID_SUBJECTS[pdfMeta.subject.toLowerCase()]
+      if (canonical) setSubject(canonical)
+    }
+    if (pdfMeta.topic) {
+      setTopic(pdfMeta.topic)
+    }
+  }, [pdfMeta])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Which fields were successfully detected (for showing the hint note)
+  const detectedBoard = pdfMeta?.examBoard && VALID_EXAM_BOARDS[pdfMeta.examBoard.toLowerCase()]
+  const detectedSubject = pdfMeta?.subject && VALID_SUBJECTS[pdfMeta.subject.toLowerCase()]
+  const detectedTopic = pdfMeta?.topic ?? null
+
   return (
     <div style={styles.wrapper}>
 
@@ -93,7 +119,11 @@ export default function UploadPanel({
                 <option value="AQA">AQA</option>
                 <option value="OCR">OCR</option>
                 <option value="Edexcel">Edexcel</option>
+                <option value="WJEC">WJEC</option>
               </select>
+              {detectedBoard && (
+                <p style={styles.detectionNote}>Detected from question paper — edit if needed</p>
+              )}
             </div>
 
             {/* ── Subject ─────────────────────────────────────────── */}
@@ -111,6 +141,9 @@ export default function UploadPanel({
                 <option value="Physics">Physics</option>
                 <option value="Combined Science">Combined Science</option>
               </select>
+              {detectedSubject && (
+                <p style={styles.detectionNote}>Detected from question paper — edit if needed</p>
+              )}
             </div>
 
             {/* ── Topic ───────────────────────────────────────────── */}
@@ -124,6 +157,9 @@ export default function UploadPanel({
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
               />
+              {detectedTopic && (
+                <p style={styles.detectionNote}>Detected from question paper — edit if needed</p>
+              )}
             </div>
 
             {/* ── Grade Boundaries ────────────────────────────────── */}
@@ -389,6 +425,13 @@ const styles = {
     color: 'var(--color-on-surface)',
     outline: 'none',
     boxSizing: 'border-box',
+  },
+
+  detectionNote: {
+    margin: '4px 0 0',
+    fontSize: '11px',
+    color: 'var(--color-outline)',
+    fontStyle: 'italic',
   },
 
   gradeBoundariesLabelRow: {
