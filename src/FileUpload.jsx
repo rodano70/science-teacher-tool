@@ -4,18 +4,11 @@ import * as XLSX from 'xlsx'
 export default function FileUpload({ onDataParsed }) {
   const [fileName, setFileName] = useState('')
   const [rowCount, setRowCount] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
 
-  function handleFileChange(e) {
-    const file = e.target.files[0] || null
-    if (!file) {
-      setFileName('')
-      setRowCount(null)
-      onDataParsed(null)
-      return
-    }
-
+  function parseFile(file) {
+    if (!file) return
     setFileName(file.name)
-
     const reader = new FileReader()
     reader.onload = (evt) => {
       const workbook = XLSX.read(evt.target.result, { type: 'array' })
@@ -28,8 +21,41 @@ export default function FileUpload({ onDataParsed }) {
     reader.readAsArrayBuffer(file)
   }
 
+  function handleFileChange(e) {
+    const file = e.target.files[0] || null
+    if (!file) {
+      setFileName('')
+      setRowCount(null)
+      onDataParsed(null)
+      return
+    }
+    parseFile(file)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = Array.from(e.dataTransfer.files).find(
+      f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls') || f.name.endsWith('.csv')
+    )
+    if (file) parseFile(file)
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
   return (
-    <label style={fileName ? styles.dropZoneLoaded : styles.dropZone}>
+    <label
+      style={{
+        ...(fileName ? styles.dropZoneLoaded : styles.dropZone),
+        ...(dragOver ? styles.dropZoneActive : {}),
+      }}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       <input
         type="file"
         accept=".xlsx,.xls"
@@ -50,10 +76,16 @@ export default function FileUpload({ onDataParsed }) {
         </div>
       ) : (
         <div style={styles.idleContent}>
-          <span className="material-symbols-outlined" style={styles.uploadIcon}>upload_file</span>
-          <p style={styles.dropTitle}>Drop marksheets here or browse files</p>
-          <p style={styles.dropSubtitle}>Accepted formats: .xlsx, .csv (Max 10MB)</p>
-          <span style={styles.selectBtn}>Select File</span>
+          <span className="material-symbols-outlined" style={{
+            ...styles.uploadIcon,
+            color: dragOver ? 'var(--color-primary)' : 'var(--color-primary)',
+          }}>upload_file</span>
+          <div style={styles.idleText}>
+            <p style={styles.dropTitle}>
+              {dragOver ? 'Drop to upload' : 'Drop marksheets here or click to browse'}
+            </p>
+            <p style={styles.dropSubtitle}>.xlsx · .csv · Max 10MB</p>
+          </div>
         </div>
       )}
     </label>
@@ -66,7 +98,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    padding: '28px 32px',
+    padding: '28px 20px',
     border: '2px dashed var(--color-outline-variant)',
     borderRadius: '12px',
     backgroundColor: 'var(--color-surface-container-lowest)',
@@ -88,35 +120,36 @@ const styles = {
     textAlign: 'center',
     boxSizing: 'border-box',
   },
+  dropZoneActive: {
+    backgroundColor: 'var(--color-primary-container)',
+    borderColor: 'var(--color-primary)',
+  },
   idleContent: {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: '14px',
+    width: '100%',
+  },
+  idleText: {
+    flex: 1,
+    textAlign: 'left',
   },
   uploadIcon: {
     color: 'var(--color-primary)',
-    fontSize: '48px',
-    marginBottom: '16px',
+    fontSize: '32px',
+    flexShrink: 0,
   },
   dropTitle: {
-    margin: '0 0 6px',
-    fontSize: '14px',
+    margin: 0,
+    fontSize: '13px',
     fontWeight: '600',
     color: 'var(--color-on-surface)',
   },
   dropSubtitle: {
-    margin: '0 0 20px',
-    fontSize: '13px',
+    margin: '3px 0 0',
+    fontSize: '12px',
     color: 'var(--color-outline)',
-  },
-  selectBtn: {
-    display: 'inline-block',
-    padding: '8px 20px',
-    backgroundColor: 'var(--color-primary)',
-    color: 'var(--color-on-primary)',
-    borderRadius: '6px',
-    fontSize: '13px',
-    fontWeight: '500',
   },
   fileInfo: {
     display: 'flex',

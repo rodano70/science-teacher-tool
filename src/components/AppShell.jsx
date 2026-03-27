@@ -2,7 +2,7 @@
 
 const SIDEBAR_WIDTH = 256
 
-export default function AppShell({ children }) {
+export default function AppShell({ children, onReset }) {
   return (
     <div style={styles.root}>
 
@@ -72,7 +72,7 @@ export default function AppShell({ children }) {
             <span style={styles.topBarTool}>Science Feedback Tool</span>
           </div>
           <div style={styles.topBarRight}>
-            <button style={styles.resetBtn}>Reset Session</button>
+            <button style={styles.resetBtn} onClick={onReset}>Reset Session</button>
             <button style={styles.iconBtn} title="Settings" aria-label="Settings">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3"/>
