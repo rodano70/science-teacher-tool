@@ -22,8 +22,10 @@ src/
 │
 ├── App.jsx
 │   Root component of the tool itself (rendered inside AppShell). Owns all
-│   shared state (studentData, form fields, activeOutput). Uses
-│   usePdfExtraction for PDF question state (questionTexts, questionPdfStatus).
+│   shared state (studentData, form fields, activeOutput, and pdfMeta).
+│   Uses usePdfExtraction for PDF question state (questionTexts,
+│   questionPdfStatus, pdfMeta). Passes pdfMeta down to UploadPanel so
+│   form fields can be pre-populated from the extracted PDF metadata.
 │   Holds the shared callClaude helper and the reset handler. Composes
 │   UploadPanel, ClassFeedbackPanel, and IndividualFeedbackPanel. Derives
 │   chart data (questionStats, scoreDistribution) from studentData without
@@ -102,11 +104,16 @@ src/
 │   │   again" and clears the input. No lockout logic.
 │   │
 │   ├── UploadPanel.jsx
-│   │   Form panel containing the Exam Board and Subject selects, Topic and
-│   │   Grade Boundaries text inputs, the PdfDropZone, the FileUpload
-│   │   component, action buttons (Generate Class Feedback Sheet / Generate
-│   │   Individual Feedback), Start Over, and progress bars. Purely
-│   │   presentational — all state and handlers come from App via props.
+│   │   Form panel containing the Exam Board and Subject selects (AQA, OCR,
+│   │   Edexcel, WJEC), Topic and Grade Boundaries text inputs, the
+│   │   PdfDropZone, the FileUpload component, action buttons (Generate
+│   │   Class Feedback Sheet / Generate Individual Feedback), Start Over,
+│   │   and progress bars. Accepts pdfMeta from App; a useEffect watches
+│   │   pdfMeta and calls the App state setters to pre-populate Exam Board,
+│   │   Subject, and Topic when a match is found (case-insensitive). Shows
+│   │   an italic "Detected from question paper — edit if needed" hint
+│   │   beneath each pre-populated field. All state and handlers still come
+│   │   from App via props — UploadPanel holds no state of its own.
 │   │
 │   ├── PdfDropZone.jsx
 │   │   Always-visible "Question paper" section rendered between Grade
@@ -125,22 +132,55 @@ src/
 │   ├── ClassFeedback/
 │   │   │
 │   │   ├── ClassFeedbackPanel.jsx
-│   │   │   Renders the full WCF sheet: a dark header with exam metadata, the
-│   │   │   PerformanceDashboard, and six FeedbackSection instances. Derives
-│   │   │   stat-card values from studentData by calling computeClassSummary
-│   │   │   directly.
+│   │   │   Renders the WCF sheet in a five-zone layout:
+│   │   │     Zone 1 — Context header: dark band with class identity, inline
+│   │   │               stat pills (avg %, completers, non-completers, range),
+│   │   │               and the Print button. A print-only header div is also
+│   │   │               rendered here (hidden on screen).
+│   │   │     Zone 2 — Assessment Diagnosis: delegates to DiagnosisZone.
+│   │   │     Zone 3 — Individual Signals: praise (primary-container pill
+│   │   │               badges) and concerns (border-b rows) rendered inline;
+│   │   │               non-completers listed as a muted group at the bottom
+│   │   │               of the concerns card.
+│   │   │     Zone 4 — Teaching Implications: delegates to ImplicationsZone.
+│   │   │     Zone 5 — Performance Analytics: PerformanceDashboard at bottom,
+│   │   │               wrapped in a no-print div so it is hidden in print.
+│   │   │   Derives stat values from studentData via computeClassSummary.
+│   │   │   Print button calls window.print().
+│   │   │
+│   │   ├── DiagnosisZone.jsx
+│   │   │   Zone 2 component. Receives successes, misconceptions, and
+│   │   │   little_errors arrays. Renders a 7/12 + 5/12 grid:
+│   │   │     Left: "What the class understood" — white card, primary-colour
+│   │   │           left-bar decorators on each bullet.
+│   │   │     Right (stacked): "Misconceptions to reteach" — error-tinted
+│   │   │           card with error-colour left bars; "Surface errors to
+│   │   │           address briefly" — surface-container-low card with
+│   │   │           standard bullet list.
+│   │   │
+│   │   ├── ImplicationsZone.jsx
+│   │   │   Zone 4 component. Receives immediate_action (string) and
+│   │   │   long_term_implications (array). Renders a full-width
+│   │   │   tertiary-container/30 card split into two columns separated by
+│   │   │   a vertical rule: left column (bolt icon) for immediate actions;
+│   │   │   right column (history_edu icon) for SOW implications.
+│   │   │   Has class print-page-break to trigger a page break before it
+│   │   │   when printing.
 │   │   │
 │   │   ├── PerformanceDashboard.jsx
 │   │   │   Tabbed chart panel (Overview / Per Question / Score Distribution)
-│   │   │   rendered between the WCF header and the written sections. Uses
-│   │   │   Recharts BarChart. Overview shows four stat cards; Per Question
-│   │   │   shows a horizontal colour-banded bar chart with 60 % and 80 %
-│   │   │   reference lines; Score Distribution shows a vertical histogram.
+│   │   │   now positioned as Zone 5 below the written sections. Restyled to
+│   │   │   design-system tokens: tab bar uses surface-container-low pill;
+│   │   │   active tab uses surface-container-lowest + shadow; chart panels
+│   │   │   use surface-container-lowest with outline-variant/20 border.
+│   │   │   A colour-coded legend (secure / developing / reteach) is added
+│   │   │   beneath the Per Question chart. Chart colours unchanged.
 │   │   │
 │   │   └── FeedbackSection.jsx
-│   │       Stateless component. Renders a single numbered, colour-coded WCF
-│   │       section (numbered badge, title, bullet list) from an items array.
-│   │       Colour theme passed entirely via props (color, bg, border).
+│   │       Stateless component retained in the codebase but no longer used
+│   │       by ClassFeedbackPanel. Renders a single numbered, colour-coded
+│   │       WCF section from an items array. Kept for reference; may be
+│   │       removed in a future cleanup.
 │   │
 │   └── IndividualFeedback/
 │       │
@@ -174,14 +214,19 @@ src/
 │   │
 │   └── usePdfExtraction.js
 │       Custom hook owning PDF question extraction state: questionTexts
-│       (string[]) and questionPdfStatus ('idle'|'loading'|'ready'|'error').
+│       (string[]), questionPdfStatus ('idle'|'loading'|'ready'|'error'),
+│       and pdfMeta ({ examBoard?, subject?, topic? } | null).
 │       Exposes:
 │         extractQuestionsFromPdf(file) — reads as base64 via FileReader,
 │           strips data-URL prefix, POSTs to Anthropic API with a document
-│           content block (claude-haiku-4-5-20251001, max_tokens 1000).
-│           Strips markdown fences, JSON.parses into questionTexts.
+│           content block (claude-haiku-4-5-20251001, max_tokens 2000).
+│           Haiku now returns { examBoard, subject, topic, questions } —
+│           fields are null when not clearly evidenced in the PDF; no
+│           guessing. Sets questionTexts from questions array; sets pdfMeta
+│           from the three metadata fields (null fields filtered out).
+│           Strips markdown fences, JSON.parses as before.
 │         updateQuestionText(index, text) — functional setState for editing.
-│         clearQuestionTexts() — resets both state values to initial.
+│         clearQuestionTexts() — resets all three state values to initial.
 │
 └── utils/
     └── docUtils.js
@@ -240,7 +285,7 @@ The parsing logic in `classUtils.js` handles two structurally different Excel fo
 
 4. **Upload**: The teacher selects an Excel file in `FileUpload`. SheetJS parses it into an array of row objects and calls `onDataParsed`, which sets `studentData` in App.
 
-5. **PDF route (optional)**: The teacher drops or selects a PDF in `PdfDropZone`. The component calls `extractQuestionsFromPdf` from `usePdfExtraction`. The hook reads the file as a base64 data URL, strips the prefix, and POSTs to the Anthropic API with a document content block (`claude-haiku-4-5-20251001`, max_tokens 1000). The response is parsed into `questionTexts`. Status transitions: `idle` → `loading` → `ready` (or `error`).
+5. **PDF route (optional)**: The teacher drops or selects a PDF in `PdfDropZone`. The component calls `extractQuestionsFromPdf` from `usePdfExtraction`. The hook reads the file as a base64 data URL, strips the prefix, and POSTs to the Anthropic API with a document content block (`claude-haiku-4-5-20251001`, max_tokens 2000). Haiku returns `{ examBoard, subject, topic, questions }`. The hook sets `questionTexts` from the questions array and `pdfMeta` from the three metadata fields (nulls filtered). `pdfMeta` propagates up through App.jsx to UploadPanel, which pre-populates the three form fields via `useEffect`. Status transitions: `idle` → `loading` → `ready` (or `error`).
 
 6. **WCF path**: The teacher clicks "Generate Class Feedback Sheet". App's `onClickGenerateWCF` clears any existing individual-feedback state, then calls `handleGenerateWCF` from `useClassFeedback`. The hook calls `computeClassSummary` and `formatSummaryForPrompt` (classUtils) to build a compact text summary, prepends question context if present, calls `callClaude` (max_tokens 4000), strips JSON fences, and parses into `wcfData`.
 
@@ -256,7 +301,7 @@ The parsing logic in `classUtils.js` handles two structurally different Excel fo
 |---------|-------|-----------|-----------|
 | WCF generation | `claude-sonnet-4-6` | 4000 | `callClaude` (text-only) |
 | Individual feedback | `claude-sonnet-4-6` | 8000 | `callClaude` (text-only) |
-| PDF question extraction | `claude-haiku-4-5-20251001` | 1000 | Direct `fetch` with document block |
+| PDF question extraction | `claude-haiku-4-5-20251001` | 2000 | Direct `fetch` with document block |
 
 - **PDF document block**: `usePdfExtraction` sends a multi-part `content` array with a `{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: <base64> } }` block followed by a text prompt. This format is not compatible with `callClaude`, so the hook makes its own `fetch` call.
 - **JSON fence stripping**: All three hooks apply `rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()` before `JSON.parse`.
