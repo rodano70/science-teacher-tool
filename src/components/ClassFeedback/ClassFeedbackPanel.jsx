@@ -13,13 +13,23 @@ import ImplicationsZone from './ImplicationsZone'
 import PerformanceDashboard from './PerformanceDashboard'
 import { computeClassSummary } from '../../classUtils'
 
-/* ── Praise sub-component (needs local state for highlight) ─────────────── */
+/* ── Praise sub-component ───────────────────────────────────────────────── */
 function PraiseSection({ praiseList }) {
   const [activeIdx, setActiveIdx] = useState(null)
 
   const parsed = praiseList.map(item => {
     const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
-    return { name: match ? match[1].trim() : item.trim(), reason: match ? match[2].trim() : null }
+    const name = match ? match[1].trim() : item.trim()
+    const rawReason = match ? match[2].trim() : null
+
+    // Extract score "X/Y" from the full text
+    const score = rawReason ? (rawReason.match(/\b(\d+)\/(\d+)\b/)?.[0] ?? null) : null
+
+    // Use content AFTER the em-dash as the description (cleaner than stripping the score)
+    const afterDash = rawReason ? rawReason.split(/\s+[—–]\s+/) : []
+    const description = afterDash.length > 1 ? afterDash.slice(1).join(' — ') : rawReason
+
+    return { name, score, description }
   })
 
   function toggleIdx(i) {
@@ -28,15 +38,11 @@ function PraiseSection({ praiseList }) {
 
   return (
     <>
-      {/* Name pills */}
       <div style={praiseStyles.pillWrap}>
         {parsed.map((p, i) => (
           <span
             key={i}
-            style={{
-              ...praiseStyles.pill,
-              ...(activeIdx === i ? praiseStyles.pillActive : {}),
-            }}
+            style={{ ...praiseStyles.pill, ...(activeIdx === i ? praiseStyles.pillActive : {}) }}
             onClick={() => toggleIdx(i)}
           >
             {p.name}
@@ -44,23 +50,20 @@ function PraiseSection({ praiseList }) {
         ))}
       </div>
 
-      {/* Per-student blocks */}
-      {parsed.some(p => p.reason) && (
-        <div style={praiseStyles.blockList}>
-          {parsed.map((p, i) => !p.reason ? null : (
-            <div
-              key={i}
-              style={{
-                ...praiseStyles.block,
-                ...(activeIdx === i ? praiseStyles.blockHighlighted : {}),
-              }}
-            >
+      <div style={praiseStyles.blockList}>
+        {parsed.map((p, i) => (
+          <div
+            key={i}
+            style={{ ...praiseStyles.block, ...(activeIdx === i ? praiseStyles.blockHighlighted : {}) }}
+          >
+            <div style={praiseStyles.blockHeader}>
               <span style={praiseStyles.blockName}>{p.name}</span>
-              <p style={praiseStyles.blockText}>{p.reason}</p>
+              {p.score && <span style={praiseStyles.scoreBadge}>{p.score}</span>}
             </div>
-          ))}
-        </div>
-      )}
+            {p.description && <p style={praiseStyles.blockText}>{p.description}</p>}
+          </div>
+        ))}
+      </div>
     </>
   )
 }
@@ -105,12 +108,166 @@ const praiseStyles = {
     backgroundColor: 'var(--color-primary-container)',
     border: '1px solid var(--color-outline-variant)',
   },
+  blockHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
   blockName: {
-    display: 'block',
     fontSize: '12px',
     fontWeight: '700',
     color: 'var(--color-on-surface)',
+    letterSpacing: '0.01em',
+  },
+  scoreBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    backgroundColor: 'var(--color-surface-container)',
+    padding: '1px 7px',
+    borderRadius: '4px',
+    letterSpacing: '0.02em',
+  },
+  blockText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: '1.55',
+    color: 'var(--color-on-surface-variant)',
+  },
+}
+
+/* ── Concern sub-component ──────────────────────────────────────────────── */
+function ConcernSection({ concernsList }) {
+  const [activeIdx, setActiveIdx] = useState(null)
+
+  const parsed = concernsList.map(item => {
+    const parts = item.split(/\s+[—–]\s+/)
+    const firstPart = parts[0]?.trim() ?? ''
+    const description = parts.slice(1).join(' — ').trim() || null
+
+    const colonIdx = firstPart.indexOf(':')
+    const name = colonIdx > 0 ? firstPart.substring(0, colonIdx).trim() : firstPart.trim()
+
+    const isNonCompleter = /non.?completer/i.test(firstPart)
+    const scoreMatch = !isNonCompleter ? firstPart.match(/\b(\d+)\/(\d+)\b/) : null
+    const score = scoreMatch ? scoreMatch[0] : null
+
+    return { name, score, isNonCompleter, description }
+  })
+
+  function toggleIdx(i) {
+    setActiveIdx(prev => (prev === i ? null : i))
+  }
+
+  return (
+    <>
+      <div style={concernStyles.pillWrap}>
+        {parsed.map((p, i) => (
+          <span
+            key={i}
+            style={{ ...concernStyles.pill, ...(activeIdx === i ? concernStyles.pillActive : {}) }}
+            onClick={() => toggleIdx(i)}
+          >
+            {p.name}
+          </span>
+        ))}
+      </div>
+
+      <div style={concernStyles.blockList}>
+        {parsed.map((p, i) => (
+          <div
+            key={i}
+            style={{
+              ...concernStyles.block,
+              ...(activeIdx === i ? concernStyles.blockHighlighted : {}),
+              borderBottom: i < parsed.length - 1 ? '1px solid rgba(254, 137, 131, 0.12)' : 'none',
+            }}
+          >
+            <div style={concernStyles.blockHeader}>
+              <span style={concernStyles.blockName}>{p.name}</span>
+              {p.isNonCompleter
+                ? <span style={concernStyles.nonCompleterBadge}>non-completer</span>
+                : p.score
+                  ? <span style={concernStyles.scoreBadge}>{p.score}</span>
+                  : null
+              }
+            </div>
+            {p.description && <p style={concernStyles.blockText}>{p.description}</p>}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+const concernStyles = {
+  pillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '14px',
+  },
+  pill: {
+    display: 'inline-block',
+    backgroundColor: 'rgba(254, 137, 131, 0.08)',
+    color: 'var(--color-error)',
+    borderRadius: '20px',
+    padding: '4px 13px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    userSelect: 'none',
+    border: '2px solid transparent',
+    transition: 'border-color 0.15s, background-color 0.15s',
+  },
+  pillActive: {
+    border: '2px solid rgba(159, 64, 61, 0.35)',
+    backgroundColor: 'rgba(254, 137, 131, 0.14)',
+  },
+  blockList: {
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid rgba(254, 137, 131, 0.14)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  block: {
+    padding: '10px 14px',
+    backgroundColor: 'var(--color-surface-container-lowest)',
+    transition: 'background-color 0.2s',
+  },
+  blockHighlighted: {
+    backgroundColor: 'rgba(254, 137, 131, 0.07)',
+  },
+  blockHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
     marginBottom: '4px',
+  },
+  blockName: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '0.01em',
+  },
+  scoreBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-error)',
+    backgroundColor: 'rgba(254, 137, 131, 0.10)',
+    padding: '1px 7px',
+    borderRadius: '4px',
+    letterSpacing: '0.02em',
+  },
+  nonCompleterBadge: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface-variant)',
+    backgroundColor: 'var(--color-surface-container)',
+    padding: '1px 7px',
+    borderRadius: '4px',
     letterSpacing: '0.01em',
   },
   blockText: {
@@ -277,35 +434,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                 <span className="material-symbols-outlined" style={styles.iconError}>person_alert</span>
                 <h3 style={styles.signalHeading}>Students needing attention</h3>
               </div>
-              {concernsList.length > 0 ? (
-                <div style={styles.concernsList}>
-                  {concernsList.map((item, i) => {
-                    const parts = item.split(/\s+[—–-]\s+/)
-                    const name = parts[0] ?? item
-                    const label = parts[1] ?? null
-                    return (
-                      <div key={i} style={{
-                        ...styles.concernRow,
-                        borderBottom: i < concernsList.length - 1 ? '1px solid #f3f4f6' : 'none',
-                      }}>
-                        <span style={styles.concernName}>{name}</span>
-                        {label && <span style={styles.concernBadge}>{label}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p style={styles.empty}>No individual concerns identified.</p>
-              )}
-              {/* Non-completers group at bottom */}
-              {nonCompleters.length > 0 && (
-                <div style={styles.nonCompleterGroup}>
-                  <span style={styles.nonCompleterLabel}>Non-completers:</span>
-                  <span style={styles.nonCompleterNames}>
-                    {nonCompleters.join(', ')}
-                  </span>
-                </div>
-              )}
+              {concernsList.length > 0
+                ? <ConcernSection concernsList={concernsList} />
+                : <p style={styles.empty}>No individual concerns identified.</p>
+              }
             </div>
 
           </div>
