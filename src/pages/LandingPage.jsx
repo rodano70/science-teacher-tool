@@ -76,7 +76,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer style={styles.footer}>
         <p style={styles.footerText}>© 2025 TeacherDesk</p>
-        <p style={styles.version}>v0.16b</p>
+        <p style={styles.version}>v0.16</p>
       </footer>
 
     </div>
@@ -199,13 +199,13 @@ const styles = {
   footerText: {
     margin: 0,
     fontSize: '13px',
-    color: '#334155',
+    color: '#94a3b8',
     fontWeight: '400',
   },
   version: {
     margin: 0,
     fontSize: '11px',
-    color: '#1e293b',
+    color: '#64748b',
     fontWeight: '400',
   },
 }
