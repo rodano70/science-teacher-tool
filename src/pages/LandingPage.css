@@ -1,0 +1,93 @@
+/* ── CTA button ──────────────────────────────────────────────────────────── */
+.td-cta-btn {
+  display: inline-block;
+  padding: 16px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  text-decoration: none;
+}
+
+.td-cta-btn:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 6px 28px rgba(37, 99, 235, 0.55);
+}
+
+/* ── Hero typography ─────────────────────────────────────────────────────── */
+.td-hero-title {
+  margin: 0 0 16px;
+  font-size: clamp(52px, 9vw, 96px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.td-hero-payoff {
+  margin: 0 0 40px;
+  font-size: clamp(17px, 2.2vw, 22px);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.55;
+}
+
+/* ── Feature grid ────────────────────────────────────────────────────────── */
+.td-features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Feature card ────────────────────────────────────────────────────────── */
+.td-feature-card {
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 14px;
+  padding: 28px 24px;
+}
+
+/* ── How it works section ────────────────────────────────────────────────── */
+.td-how-section {
+  position: relative;
+  z-index: 1;
+  background-color: #0f172a;
+  padding: 96px 24px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .td-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .td-features-grid {
+    gap: 12px;
+  }
+
+  .td-feature-card {
+    padding: 20px 16px;
+  }
+
+  .td-how-section {
+    padding: 64px 20px;
+  }
+
+  .td-cta-btn {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+}
