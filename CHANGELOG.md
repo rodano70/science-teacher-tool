@@ -1,5 +1,62 @@
 # Changelog
 
+## v0.19.5 — Individual Signals redesign: score badges, ConcernSection, muted palette
+
+- PraiseSection: score (X/Y) extracted from AI text and shown as a small neutral
+  badge next to the student name in each block; description body uses content
+  after the em-dash separator so the score never appears twice
+- Students needing attention refactored as ConcernSection sub-component matching
+  the praise layout: name pills on top, one block per student, click pill to
+  highlight the respective block
+- ConcernSection: parses each item into name, score, isNonCompleter, and
+  description; non-completers show a neutral "non-completer" tag instead of a
+  score; score badge uses very muted pink (rgba 0.10 background)
+- Highlighted block state uses rgba(254,137,131,0.07) — much more refined than
+  the previous strong error-container fill
+- Separate "Non-completers" listing removed from the bottom of the card
+- Concern pills styled with transparent border at rest, subtle pink border when active
+
+## v0.19.4 — Praise in class: per-student blocks with click-to-highlight
+
+- PraiseSection extracted as a sub-component with useState for active index
+- Name pills stay at the top; each student gets an individual block (name bold,
+  reason in normal weight — not italic)
+- Clicking a pill highlights that student's block (primary-container background);
+  clicking again deselects
+
+## v0.19.3 — Reset Session, drag-and-drop marksheet, compact upload frame
+
+- AppPage: manages appKey so Reset Session button remounts App entirely, clearing
+  all state including FileUpload's internal filename display
+- AppShell: accepts onReset prop; Reset Session button is now wired up
+- FileUpload: onDragOver / onDragLeave / onDrop handlers added (files can now be
+  dragged in, not just selected via file picker); drag-active visual state added
+- FileUpload: idle layout restructured to horizontal row (icon + text) so height
+  matches PdfDropZone; padding reduced to 28px 20px; icon reduced to 32px;
+  Select File button removed (label is fully clickable)
+
+## v0.19.2 — Fix Individual Signals grid and concern badge overflow
+
+- signalsGrid: gridTemplateColumns changed to minmax(0,1fr) minmax(0,1fr) so
+  both columns are truly equal regardless of content length
+- concernRow: switched to flex-column so name and badge explanation stack cleanly
+- concernBadge: removed whiteSpace nowrap; font-weight softened to 500
+
+## v0.19.1 — Visual adjustments: upload frame, feedback layout, nav icons
+
+- Marksheet drop zone height reduced to match Question Paper frame
+- table_chart Material Symbol icon added to Student Marksheet card header
+- "2. Grades" step removed from stepper; renumbered to 3 steps
+- Sidebar emoji icons replaced with Material Symbols (biotech, edit_calendar,
+  description, library_books, inventory_2); "Academic Curator" sub-label added
+- Help Centre gains a help icon; top-bar avatar replaced with account_circle icon
+- ClassFeedbackPanel Zone 1: stat tiles enlarged with micro-labels; Print button
+  uses gradient; Individual button added beside Print
+- ClassFeedbackPanel Zone 3: star / person_alert icons on signal card headings;
+  concern rows use red pill badge
+- PerformanceDashboard: Overview tab removed; Per Question (2/3) and Score
+  Distribution (1/3) shown side-by-side permanently
+
 ## v0.19 — WCF Restyle, PDF Pre-population, Print Layout
 
 - PDF extraction expanded: Haiku now returns examBoard, subject, topic
