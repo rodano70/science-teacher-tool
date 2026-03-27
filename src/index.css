@@ -218,18 +218,56 @@ button:focus-visible {
 
 /* ── Print ───────────────────────────────────────────────────────────────── */
 
+/* .print-only elements are hidden on screen; shown only in print */
+.print-only { display: none; }
+
 @media print {
-  .no-print {
-    display: none !important;
-  }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
 
-  body {
+  /* Hide structural chrome */
+  .sidebar, header, footer, nav { display: none !important; }
+  aside { display: none !important; }
+  .ml-64 { margin-left: 0 !important; }
+
+  body { background: white; }
+
+  /* Ink-friendly card style — white bg, light border, no shadows */
+  .print-card {
     background: white !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
   }
 
-  #wcf-sheet {
+  /* Remove decorative coloured backgrounds from zone wrappers */
+  #wcf-sheet,
+  #wcf-sheet > * {
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
+
+  /* Replace coloured left-bar decorators with neutral left-border */
+  [style*="backgroundColor: 'var(--color-primary)'"],
+  [style*="backgroundColor: 'var(--color-error)'"] {
+    background-color: #9ca3af !important;
+  }
+
+  /* Misconcpetion and errors zone cards — white in print */
+  [style*="rgba(254, 137, 131"] {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* ImplicationsZone card */
+  [style*="rgba(217, 215, 248"] {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Page break before Teaching Implications zone if content is long */
+  .print-page-break { page-break-before: always; }
+
+  /* Hide performance analytics zone entirely in print */
+  .no-print { display: none !important; }
 }
