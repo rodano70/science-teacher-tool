@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.18 — Upload Panel Restyle
+
+- UploadPanel.jsx restyled to match Stitch "Academic Curator" design
+- Bento grid layout: left column (marksheet + question paper), right column (form + generate buttons)
+- Material Symbols Outlined font added to index.html and index.css
+- Primary gradient and outlined button styles applied to generate buttons
+- Bottom-bar input style applied to all form fields
+- Grade boundaries rendered as styled card with bottom-bar inner input
+- "Question Paper (Optional)" label corrected to "Question Paper"
+- FileUpload: Material Symbols upload_file icon, drop zone redesigned to match Stitch reference
+- PdfDropZone: drag_indicator icon added to extracted question rows (visual only); section wrapper and redundant header moved to UploadPanel section context
+- App.jsx: main container widened to 1260px; white card wrapper removed (section cards provide visual containment)
+- No logic, hook, or architectural changes
+
 ## v0.17 — New shell (parallel build)
 
 - New persistent sidebar with TOOLS / LIBRARY navigation
