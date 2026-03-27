@@ -8,21 +8,28 @@
 - UploadPanel.jsx: WJEC added to exam board select; useEffect pre-populates
   Exam Board, Subject, and Topic from pdfMeta; italic detection hint shown
   beneath each pre-populated field
-- ClassFeedbackPanel.jsx: four-zone layout (Diagnosis, Individual Signals,
-  Implications, Analytics); Zone 1 header gains inline stat pills; print-only
-  header added; Analytics (PerformanceDashboard) moved to Zone 5 at bottom
-- DiagnosisZone.jsx: new component replacing Key Successes + Misconceptions
-  + Little Errors sections; 7/12 + 5/12 grid with coloured left-bar
-  decorators expressing severity through visual language
-- ImplicationsZone.jsx: new component; full-width tertiary-container card
-  with bolt/history_edu icons split into Immediate vs Long-term columns
+- ClassFeedbackPanel.jsx: five-zone layout fully redesigned — Zone 1 is a
+  clean identity block (eyebrow/title/subtitle) with stat tiles (primary-
+  container avg, surface-container-low completers/range, error-container/20
+  absent) + print button; standalone printBar removed; Zone 3 praise shows
+  name pills in flex-wrap with one shared italic note; Zone 5 analytics
+  wrapped in no-print div
+- DiagnosisZone.jsx: "Assessment Diagnosis" section label; filled verified
+  (primary), psychology_alt (error), pending (outline-variant) icons; all
+  cards restyled to surface-container-lowest, rounded-xl, border outline-
+  variant/20, shadow-sm; misconception heading #752121; surface errors use
+  dot-bullet list; body text uses on-surface-variant token
+- ImplicationsZone.jsx: "Teaching Implications" section label; 5fr/40px/6fr
+  CSS grid replaces flex columns; vRule as grid item with justifySelf:center;
+  column labels uppercase + #54546f; long-term rendered as <p> paragraphs
 - useClassFeedback.js: immediate_action field added to WCF prompt (7th key)
 - PerformanceDashboard.jsx: restyled to design-system tokens; tab bar uses
   surface-container-low pill; chart panels use surface-container-lowest;
   colour-coded legend added beneath per-question chart
 - index.css: @media print block expanded; .print-only/.no-print utility
   classes; sidebar/nav/aside hidden in print; .print-card ink-friendly white;
-  .print-page-break triggers page-break before ImplicationsZone
+  .print-page-break triggers page-break before ImplicationsZone;
+  .material-symbols-outlined.filled added for FILL=1 icon variant
 - Print button in ClassFeedbackPanel.jsx calls window.print()
 - PowerPoint export parked as future feature
 - Version label updated to v0.19

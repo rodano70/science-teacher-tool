@@ -133,15 +133,16 @@ src/
 │   │   │
 │   │   ├── ClassFeedbackPanel.jsx
 │   │   │   Renders the WCF sheet in a five-zone layout:
-│   │   │     Zone 1 — Context header: dark band with class identity, inline
-│   │   │               stat pills (avg %, completers, non-completers, range),
-│   │   │               and the Print button. A print-only header div is also
-│   │   │               rendered here (hidden on screen).
+│   │   │     Zone 1 — Context header: clean identity block (eyebrow label,
+│   │   │               topic title, board/subject subtitle) + stat tiles
+│   │   │               (primary-container avg %, surface-container-low
+│   │   │               completers and range, error-container/20 absent
+│   │   │               count) + Print button (no-print). A print-only
+│   │   │               header div is hidden on screen; shown in print.
 │   │   │     Zone 2 — Assessment Diagnosis: delegates to DiagnosisZone.
-│   │   │     Zone 3 — Individual Signals: praise (primary-container pill
-│   │   │               badges) and concerns (border-b rows) rendered inline;
-│   │   │               non-completers listed as a muted group at the bottom
-│   │   │               of the concerns card.
+│   │   │     Zone 3 — Individual Signals: two surface-container-lowest
+│   │   │               cards — praise (name pills + shared italic note)
+│   │   │               and concerns (rows + non-completers group).
 │   │   │     Zone 4 — Teaching Implications: delegates to ImplicationsZone.
 │   │   │     Zone 5 — Performance Analytics: PerformanceDashboard at bottom,
 │   │   │               wrapped in a no-print div so it is hidden in print.
@@ -150,20 +151,24 @@ src/
 │   │   │
 │   │   ├── DiagnosisZone.jsx
 │   │   │   Zone 2 component. Receives successes, misconceptions, and
-│   │   │   little_errors arrays. Renders a 7/12 + 5/12 grid:
-│   │   │     Left: "What the class understood" — white card, primary-colour
-│   │   │           left-bar decorators on each bullet.
+│   │   │   little_errors arrays. Renders a 7fr + 5fr grid under an
+│   │   │   "Assessment Diagnosis" section label:
+│   │   │     Left: "What the class understood" — surface-container-lowest
+│   │   │           card, filled verified icon (primary), primary left-bar
+│   │   │           decorators, on-surface-variant body text.
 │   │   │     Right (stacked): "Misconceptions to reteach" — error-tinted
-│   │   │           card with error-colour left bars; "Surface errors to
-│   │   │           address briefly" — surface-container-low card with
-│   │   │           standard bullet list.
+│   │   │           card, psychology_alt icon (error), #752121 heading,
+│   │   │           error left bars; "Surface errors to address briefly" —
+│   │   │           surface-container-lowest card, pending icon, dot-bullet
+│   │   │           list (6px circle, outline token).
 │   │   │
 │   │   ├── ImplicationsZone.jsx
 │   │   │   Zone 4 component. Receives immediate_action (string) and
-│   │   │   long_term_implications (array). Renders a full-width
-│   │   │   tertiary-container/30 card split into two columns separated by
-│   │   │   a vertical rule: left column (bolt icon) for immediate actions;
-│   │   │   right column (history_edu icon) for SOW implications.
+│   │   │   long_term_implications (array). Renders a tertiary-container/30
+│   │   │   card with a 5fr/40px/6fr CSS grid: left column (bolt icon,
+│   │   │   "Immediate" label) for next-lesson action; 1px vRule as grid
+│   │   │   item; right column (history_edu icon, "Long-term" label) with
+│   │   │   one <p> per implication. Column labels uppercase + #54546f.
 │   │   │   Has class print-page-break to trigger a page break before it
 │   │   │   when printing.
 │   │   │
