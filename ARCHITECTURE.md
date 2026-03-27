@@ -2,7 +2,7 @@
 
 ## Overview
 
-TeacherDesk is a browser-based React application that helps UK secondary science teachers analyse class exam results and produce feedback. The app is split into two routes: a public landing page at `/` and the password-gated tool at `/app`. Once inside, a teacher uploads an Excel spreadsheet of student scores, fills in a few form fields, and can optionally upload an exam question paper PDF. They can then generate either a structured Whole Class Feedback (WCF) sheet or personalised WWW/EBI/To-Improve feedback for every student. All AI analysis is performed by calling the Claude API directly from the browser.
+TeacherDesk is a browser-based React application that helps UK secondary science teachers analyse class exam results and produce feedback. The app is split into two routes: a public landing page at `/` and the password-gated tool at `/app`. Inside the tool, a persistent `AppShell` provides the sidebar navigation, top bar, and step indicator. A teacher uploads an Excel spreadsheet of student scores, fills in a few form fields, and can optionally upload an exam question paper PDF. They can then generate either a structured Whole Class Feedback (WCF) sheet or personalised WWW/EBI/To-Improve feedback for every student. All AI analysis is performed by calling the Claude API directly from the browser.
 
 ---
 
@@ -18,16 +18,17 @@ src/
 ├── main.jsx
 │   Router root. Wraps the app in BrowserRouter with two Routes:
 │     /    → <LandingPage />  (public, no auth)
-│     /app → <AppPage />      (password-gated tool)
+│     /app → <AppPage />      (password-gated, shell-wrapped tool)
 │
 ├── App.jsx
-│   Root component of the tool itself (rendered inside AppPage). Owns all
+│   Root component of the tool itself (rendered inside AppShell). Owns all
 │   shared state (studentData, form fields, activeOutput). Uses
 │   usePdfExtraction for PDF question state (questionTexts, questionPdfStatus).
 │   Holds the shared callClaude helper and the reset handler. Composes
 │   UploadPanel, ClassFeedbackPanel, and IndividualFeedbackPanel. Derives
 │   chart data (questionStats, scoreDistribution) from studentData without
-│   additional API calls.
+│   additional API calls. Renders a <> fragment — page chrome (header, full-
+│   height wrapper) is owned by AppShell; App manages only content padding.
 │
 ├── FileUpload.jsx
 │   Self-contained file-input component. Reads the selected .xlsx/.xls file
@@ -44,9 +45,10 @@ src/
 ├── pages/
 │   │
 │   ├── AppPage.jsx
-│   │   Thin wrapper rendered at /app. Composes PasswordGate around App so
-│   │   the password check applies only to the /app route and App itself
-│   │   remains unaware of authentication.
+│   │   Wrapper rendered at /app. Composes PasswordGate → AppShell → App:
+│   │     <PasswordGate><AppShell><App /></AppShell></PasswordGate>
+│   │   PasswordGate handles auth; AppShell provides page chrome; App owns
+│   │   business logic. Each layer is unaware of the others.
 │   │
 │   ├── LandingPage.jsx
 │   │   Public marketing page rendered at /. Full-viewport video hero: a
@@ -68,6 +70,25 @@ src/
 │       padding reduce at ≤640 px.
 │
 ├── components/
+│   │
+│   ├── AppShell.jsx
+│   │   Pure layout component. Accepts {children} and renders nothing else —
+│   │   no hooks, no state, no imports from app logic. Provides:
+│   │     Sidebar (position:fixed, 256px): TeacherDesk wordmark; TOOLS
+│   │       section with active "Science Feedback" item (highlighted with
+│   │       --color-surface-container-highest) and two greyed "Soon" items
+│   │       (Lesson Planner, Report Writer) at 45% opacity; LIBRARY section
+│   │       (Library, Archive); Help Centre link pinned to the bottom.
+│   │     Top bar (sticky, 56px, --color-surface-container-low): left side
+│   │       wordmark + "Science Feedback Tool" muted label; right side Reset
+│   │       Session button, settings icon (inline SVG), avatar initials
+│   │       circle, "Dr. Smith" label.
+│   │     Stepper: four steps (1. Upload / 2. Grades / 3. Feedback /
+│   │       4. Dashboard); step 1 active (--color-primary + 2px underline);
+│   │       steps 2–4 in --color-on-surface-variant. Display only — no
+│   │       click behaviour in this version.
+│   │     Content area: margin-left:256px, renders {children} with no
+│   │       padding. All styles use --color-* tokens from index.css.
 │   │
 │   ├── PasswordGate.jsx
 │   │   Full-screen password gate rendered by AppPage. On mount, checks
@@ -175,9 +196,17 @@ src/
 
 ## Key Design Decisions
 
+### AppShell: pure layout via the `children` prop
+
+`AppShell` is a layout-only component that accepts `{children}` and renders no application logic. It knows nothing about student data, hooks, or panels. This makes it reusable — future tools (Lesson Planner, Report Writer) can be dropped into the same shell without modification — and keeps the separation between layout and content clean. The shell is inserted at the `AppPage` boundary (`<PasswordGate><AppShell><App /></AppShell></PasswordGate>`), so neither `App` nor `PasswordGate` is aware of each other or of the shell.
+
+### Design token system in `index.css`
+
+`src/index.css` defines two sets of CSS custom properties on `:root`. The first set (`--c-*`) is the original token system used by existing components; it is preserved unchanged to avoid regressions. The second set (`--color-*`) is the new shell design system — 21 tokens covering surfaces, primary palette, on-surface/variant, outline, error, and tertiary roles. All `AppShell` styles reference only `--color-*` tokens. This means the shell palette can be updated globally without touching any component, and a future dark-mode or white-label theme can be applied by redefining the `--color-*` block. Existing components continue to use `--c-*` until they are individually migrated.
+
 ### Routing: public landing page at `/`, gated tool at `/app`
 
-`main.jsx` installs `BrowserRouter` and declares two `<Route>` entries. The `/` route renders `LandingPage` with no authentication requirement — it is intentionally public so teachers can be directed to the product without needing the password first. The `/app` route renders `AppPage`, which wraps `App` in `PasswordGate`. Keeping the gate in `AppPage` rather than inside `App` means `App` itself remains unaware of authentication; the gate can be removed or swapped without touching the tool's core component. A `vercel.json` catch-all rewrite ensures both routes resolve correctly on Vercel after a hard refresh or direct URL navigation.
+`main.jsx` installs `BrowserRouter` and declares two `<Route>` entries. The `/` route renders `LandingPage` with no authentication requirement — it is intentionally public so teachers can be directed to the product without needing the password first. The `/app` route renders `AppPage`, which composes `PasswordGate → AppShell → App`. Keeping each concern in its own wrapper means any layer can be removed or swapped without touching the others. A `vercel.json` catch-all rewrite ensures both routes resolve correctly on Vercel after a hard refresh or direct URL navigation.
 
 ### PasswordGate: sessionStorage-based, env-var secret
 
@@ -205,17 +234,19 @@ The parsing logic in `classUtils.js` handles two structurally different Excel fo
 
 1. **Landing**: The teacher visits `/`. `LandingPage` renders with no authentication. Clicking "Log in to TeacherDesk" navigates to `/app`.
 
-2. **Password gate**: `AppPage` renders `PasswordGate` wrapping `App`. On mount, `PasswordGate` checks `sessionStorage.getItem('td_auth')`; if already `'true'`, children render immediately. Otherwise the gate UI is shown. On correct password entry, `sessionStorage` is set and children render.
+2. **Password gate**: `AppPage` renders `PasswordGate` wrapping `AppShell → App`. On mount, `PasswordGate` checks `sessionStorage.getItem('td_auth')`; if already `'true'`, children (the shell + tool) render immediately. Otherwise the gate UI is shown. On correct password entry, `sessionStorage` is set and children render.
 
-3. **Upload**: The teacher selects an Excel file in `FileUpload`. SheetJS parses it into an array of row objects and calls `onDataParsed`, which sets `studentData` in App.
+3. **Shell**: `AppShell` renders the sidebar, top bar, and stepper around `App`. No data passes through the shell — it is a pure layout wrapper.
 
-4. **PDF route (optional)**: The teacher drops or selects a PDF in `PdfDropZone`. The component calls `extractQuestionsFromPdf` from `usePdfExtraction`. The hook reads the file as a base64 data URL, strips the prefix, and POSTs to the Anthropic API with a document content block (`claude-haiku-4-5-20251001`, max_tokens 1000). The response is parsed into `questionTexts`. Status transitions: `idle` → `loading` → `ready` (or `error`).
+4. **Upload**: The teacher selects an Excel file in `FileUpload`. SheetJS parses it into an array of row objects and calls `onDataParsed`, which sets `studentData` in App.
 
-5. **WCF path**: The teacher clicks "Generate Class Feedback Sheet". App's `onClickGenerateWCF` clears any existing individual-feedback state, then calls `handleGenerateWCF` from `useClassFeedback`. The hook calls `computeClassSummary` and `formatSummaryForPrompt` (classUtils) to build a compact text summary, prepends question context if present, calls `callClaude` (max_tokens 4000), strips JSON fences, and parses into `wcfData`.
+5. **PDF route (optional)**: The teacher drops or selects a PDF in `PdfDropZone`. The component calls `extractQuestionsFromPdf` from `usePdfExtraction`. The hook reads the file as a base64 data URL, strips the prefix, and POSTs to the Anthropic API with a document content block (`claude-haiku-4-5-20251001`, max_tokens 1000). The response is parsed into `questionTexts`. Status transitions: `idle` → `loading` → `ready` (or `error`).
 
-6. **Individual feedback path**: The teacher clicks "Generate Individual Feedback". App's `onClickGenerateFeedback` clears WCF state, then calls `handleGenerateFeedback` from `useIndividualFeedback`. The hook calls `extractStudentsForFeedback` (classUtils), prepends question context if present, calls `callClaude` (max_tokens 8000), and parses into `feedbackData`.
+6. **WCF path**: The teacher clicks "Generate Class Feedback Sheet". App's `onClickGenerateWCF` clears any existing individual-feedback state, then calls `handleGenerateWCF` from `useClassFeedback`. The hook calls `computeClassSummary` and `formatSummaryForPrompt` (classUtils) to build a compact text summary, prepends question context if present, calls `callClaude` (max_tokens 4000), strips JSON fences, and parses into `wcfData`.
 
-7. **Word download**: The teacher clicks "Download as Word Document". `handleDownloadWordDoc` in `useIndividualFeedback` calls `downloadFeedbackDoc` (docUtils), which builds a `.docx` file and triggers a browser download.
+7. **Individual feedback path**: The teacher clicks "Generate Individual Feedback". App's `onClickGenerateFeedback` clears WCF state, then calls `handleGenerateFeedback` from `useIndividualFeedback`. The hook calls `extractStudentsForFeedback` (classUtils), prepends question context if present, calls `callClaude` (max_tokens 8000), and parses into `feedbackData`.
+
+8. **Word download**: The teacher clicks "Download as Word Document". `handleDownloadWordDoc` in `useIndividualFeedback` calls `downloadFeedbackDoc` (docUtils), which builds a `.docx` file and triggers a browser download.
 
 ---
 
