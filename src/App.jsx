@@ -224,28 +224,28 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.17</p>
+      <p style={styles.version}>v0.18a</p>
     </>
   )
 }
 
 const styles = {
   main: {
-    maxWidth: '860px',
+    maxWidth: '1260px',
     margin: '0 auto',
-    padding: '32px 24px 64px',
+    padding: '0',
   },
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05)',
-    padding: '32px',
+    backgroundColor: 'transparent',
+    borderRadius: '0',
+    boxShadow: 'none',
+    padding: '0',
   },
   errorBox: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '10px',
-    marginTop: '20px',
+    margin: '0 48px 16px',
     padding: '12px 16px',
     backgroundColor: '#fef2f2',
     border: '1px solid #fecaca',
