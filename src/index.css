@@ -134,6 +134,14 @@ textarea:focus-visible {
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
+/* Bottom-bar inputs (rounded-t-md, no full border) get only a border-bottom
+   focus highlight — suppress the full box outline. */
+.bottom-bar-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--color-primary) !important;
+}
+
 button:focus-visible {
   outline: 2px solid var(--c-primary);
   outline-offset: 2px;

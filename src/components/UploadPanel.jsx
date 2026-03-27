@@ -84,6 +84,7 @@ export default function UploadPanel({
             <div style={styles.fieldGroup}>
               <label style={styles.fieldLabel}>Exam Board</label>
               <select
+                className="bottom-bar-input"
                 style={styles.selectInput}
                 value={examBoard}
                 onChange={e => setExamBoard(e.target.value)}
@@ -99,6 +100,7 @@ export default function UploadPanel({
             <div style={styles.fieldGroup}>
               <label style={styles.fieldLabel}>Subject</label>
               <select
+                className="bottom-bar-input"
                 style={styles.selectInput}
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
@@ -116,6 +118,7 @@ export default function UploadPanel({
               <label style={styles.fieldLabel}>Core Topic</label>
               <input
                 type="text"
+                className="bottom-bar-input"
                 style={styles.textInput}
                 placeholder="e.g. Cell Biology"
                 value={topic}
@@ -125,14 +128,19 @@ export default function UploadPanel({
 
             {/* ── Grade Boundaries ────────────────────────────────── */}
             <div style={styles.fieldGroup}>
-              <label style={styles.fieldLabel}>Grade Boundaries (9-1)</label>
-              <input
-                type="text"
-                style={styles.textInput}
-                placeholder="e.g. 9:90, 8:80, 7:70, 4:45…"
-                value={gradeBoundaries}
-                onChange={e => setGradeBoundaries(e.target.value)}
-              />
+              <div style={styles.gradeBoundariesLabelRow}>
+                <label style={styles.fieldLabel}>Grade Boundaries (9-1)</label>
+              </div>
+              <div style={styles.gradeBoundariesCard}>
+                <input
+                  type="text"
+                  className="bottom-bar-input"
+                  style={styles.gradeBoundariesInput}
+                  placeholder="e.g. 9:90, 8:80, 7:70, 4:45…"
+                  value={gradeBoundaries}
+                  onChange={e => setGradeBoundaries(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* ── Generate WCF button ──────────────────────────────── */}
@@ -376,6 +384,32 @@ const styles = {
     borderBottom: '2px solid var(--color-outline)',
     borderRadius: '6px 6px 0 0',
     padding: '12px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--color-on-surface)',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+
+  gradeBoundariesLabelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '4px',
+  },
+  gradeBoundariesCard: {
+    backgroundColor: 'var(--color-surface-container-low)',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    border: '1px solid var(--color-outline-variant)',
+  },
+  gradeBoundariesInput: {
+    width: '100%',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderBottom: '2px solid var(--color-outline)',
+    borderRadius: '0',
+    padding: '4px 0 8px',
     fontSize: '14px',
     fontWeight: '500',
     color: 'var(--color-on-surface)',
