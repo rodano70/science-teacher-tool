@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.16 — Feature Q (Password Gate) + Feature R (Landing Page)
+
+- Added PasswordGate component — sessionStorage-based auth, reads VITE_ACCESS_PASSWORD env var
+- Added React Router — two routes: / (LandingPage) and /app (PasswordGate → App)
+- Added TeacherDesk landing page with video hero background, feature strip, and two CTAs
+- Created .env.example documenting the VITE_ACCESS_PASSWORD pattern
+
 ## v0.15
 
 - PDF question paper route (Future Feature B): always-visible "Question paper" section in the form with drag-and-drop / click-to-browse PDF upload
@@ -47,7 +54,7 @@
 
 ## v0.11
 
-- Non-completers (total = 0) tagged before prompt build; Claude writes a single "no submission recorded" sentence; Word doc renders an italic note with no WWW/EBI/To Improve labels
+- Non-completers (total = 0) tagged before prompt build; Claude writes a single "no submission recorded" sentence; Word doc renders an italic note with no WWW/EBI/To-Improve labels
 - Start Over button: appears only after file upload, requires window.confirm, resets all state including form fields, outputs, and activeOutput
 - Progress bar: asymptotic easing formula (prev + (90 − prev) × 0.04 per 250 ms tick), decelerates near 90% cap, jumps to 100% on API resolve; fixed phase label beneath bar
 - Single output panel: activeOutput state (null | 'wcf' | 'individual') ensures only one result panel renders at a time; stale results no longer accumulate
