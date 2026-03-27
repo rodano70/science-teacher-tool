@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.17 — New shell (parallel build)
+
+- New persistent sidebar with TOOLS / LIBRARY navigation
+- Redesigned top bar (tool name, Reset Session, user avatar)
+- Horizontal numbered stepper (display only — no routing yet)
+- Design tokens defined as CSS custom properties in index.css
+- AppShell.jsx wraps existing app panels with no logic changes
+- All existing functionality verified against Educake test file
+
 ## v0.16 — Feature Q (Password Gate) + Feature R (Landing Page)
 
 - Added PasswordGate component — sessionStorage-based auth, reads VITE_ACCESS_PASSWORD env var
