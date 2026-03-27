@@ -7,10 +7,276 @@
  * Zone 4 — Teaching Implications → ImplicationsZone
  * Zone 5 — Performance Analytics → PerformanceDashboard
  */
+import { useState } from 'react'
 import DiagnosisZone from './DiagnosisZone'
 import ImplicationsZone from './ImplicationsZone'
 import PerformanceDashboard from './PerformanceDashboard'
 import { computeClassSummary } from '../../classUtils'
+
+/* ── Praise sub-component ───────────────────────────────────────────────── */
+function PraiseSection({ praiseList }) {
+  const [activeIdx, setActiveIdx] = useState(null)
+
+  const parsed = praiseList.map(item => {
+    const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
+    const name = match ? match[1].trim() : item.trim()
+    const rawReason = match ? match[2].trim() : null
+
+    // Extract score "X/Y" from the full text
+    const score = rawReason ? (rawReason.match(/\b(\d+)\/(\d+)\b/)?.[0] ?? null) : null
+
+    // Use content AFTER the em-dash as the description (cleaner than stripping the score)
+    const afterDash = rawReason ? rawReason.split(/\s+[—–]\s+/) : []
+    const description = afterDash.length > 1 ? afterDash.slice(1).join(' — ') : rawReason
+
+    return { name, score, description }
+  })
+
+  function toggleIdx(i) {
+    setActiveIdx(prev => (prev === i ? null : i))
+  }
+
+  return (
+    <>
+      <div style={praiseStyles.pillWrap}>
+        {parsed.map((p, i) => (
+          <span
+            key={i}
+            style={{ ...praiseStyles.pill, ...(activeIdx === i ? praiseStyles.pillActive : {}) }}
+            onClick={() => toggleIdx(i)}
+          >
+            {p.name}
+          </span>
+        ))}
+      </div>
+
+      <div style={praiseStyles.blockList}>
+        {parsed.map((p, i) => (
+          <div
+            key={i}
+            style={{ ...praiseStyles.block, ...(activeIdx === i ? praiseStyles.blockHighlighted : {}) }}
+          >
+            <div style={praiseStyles.blockHeader}>
+              <span style={praiseStyles.blockName}>{p.name}</span>
+              {p.score && <span style={praiseStyles.scoreBadge}>{p.score}</span>}
+            </div>
+            {p.description && <p style={praiseStyles.blockText}>{p.description}</p>}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+const praiseStyles = {
+  pillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '14px',
+  },
+  pill: {
+    display: 'inline-block',
+    backgroundColor: 'var(--color-primary-container)',
+    color: 'var(--color-on-primary-container)',
+    borderRadius: '20px',
+    padding: '4px 13px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    userSelect: 'none',
+    border: '2px solid transparent',
+    transition: 'border-color 0.15s, background-color 0.15s',
+  },
+  pillActive: {
+    border: '2px solid var(--color-primary)',
+    backgroundColor: 'var(--color-surface-dim)',
+  },
+  blockList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  block: {
+    padding: '10px 14px',
+    borderRadius: '8px',
+    backgroundColor: 'var(--color-surface-container-low)',
+    border: '1px solid rgba(93, 93, 120, 0.10)',
+    transition: 'background-color 0.2s, border-color 0.2s',
+  },
+  blockHighlighted: {
+    backgroundColor: 'var(--color-primary-container)',
+    border: '1px solid var(--color-outline-variant)',
+  },
+  blockHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  blockName: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '0.01em',
+  },
+  scoreBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    backgroundColor: 'var(--color-surface-container)',
+    padding: '1px 7px',
+    borderRadius: '4px',
+    letterSpacing: '0.02em',
+  },
+  blockText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: '1.55',
+    color: 'var(--color-on-surface-variant)',
+  },
+}
+
+/* ── Concern sub-component ──────────────────────────────────────────────── */
+function ConcernSection({ concernsList }) {
+  const [activeIdx, setActiveIdx] = useState(null)
+
+  const parsed = concernsList.map(item => {
+    const parts = item.split(/\s+[—–]\s+/)
+    const firstPart = parts[0]?.trim() ?? ''
+    const description = parts.slice(1).join(' — ').trim() || null
+
+    const colonIdx = firstPart.indexOf(':')
+    const name = colonIdx > 0 ? firstPart.substring(0, colonIdx).trim() : firstPart.trim()
+
+    const isNonCompleter = /non.?completer/i.test(firstPart)
+    const scoreMatch = !isNonCompleter ? firstPart.match(/\b(\d+)\/(\d+)\b/) : null
+    const score = scoreMatch ? scoreMatch[0] : null
+
+    return { name, score, isNonCompleter, description }
+  })
+
+  function toggleIdx(i) {
+    setActiveIdx(prev => (prev === i ? null : i))
+  }
+
+  return (
+    <>
+      <div style={concernStyles.pillWrap}>
+        {parsed.map((p, i) => (
+          <span
+            key={i}
+            style={{ ...concernStyles.pill, ...(activeIdx === i ? concernStyles.pillActive : {}) }}
+            onClick={() => toggleIdx(i)}
+          >
+            {p.name}
+          </span>
+        ))}
+      </div>
+
+      <div style={concernStyles.blockList}>
+        {parsed.map((p, i) => (
+          <div
+            key={i}
+            style={{
+              ...concernStyles.block,
+              ...(activeIdx === i ? concernStyles.blockHighlighted : {}),
+              borderBottom: i < parsed.length - 1 ? '1px solid rgba(254, 137, 131, 0.12)' : 'none',
+            }}
+          >
+            <div style={concernStyles.blockHeader}>
+              <span style={concernStyles.blockName}>{p.name}</span>
+              {p.isNonCompleter
+                ? <span style={concernStyles.nonCompleterBadge}>non-completer</span>
+                : p.score
+                  ? <span style={concernStyles.scoreBadge}>{p.score}</span>
+                  : null
+              }
+            </div>
+            {p.description && <p style={concernStyles.blockText}>{p.description}</p>}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+const concernStyles = {
+  pillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginBottom: '14px',
+  },
+  pill: {
+    display: 'inline-block',
+    backgroundColor: 'rgba(254, 137, 131, 0.08)',
+    color: 'var(--color-error)',
+    borderRadius: '20px',
+    padding: '4px 13px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    userSelect: 'none',
+    border: '2px solid transparent',
+    transition: 'border-color 0.15s, background-color 0.15s',
+  },
+  pillActive: {
+    border: '2px solid rgba(159, 64, 61, 0.35)',
+    backgroundColor: 'rgba(254, 137, 131, 0.14)',
+  },
+  blockList: {
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid rgba(254, 137, 131, 0.14)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  block: {
+    padding: '10px 14px',
+    backgroundColor: 'var(--color-surface-container-lowest)',
+    transition: 'background-color 0.2s',
+  },
+  blockHighlighted: {
+    backgroundColor: 'rgba(254, 137, 131, 0.07)',
+  },
+  blockHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  blockName: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '0.01em',
+  },
+  scoreBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-error)',
+    backgroundColor: 'rgba(254, 137, 131, 0.10)',
+    padding: '1px 7px',
+    borderRadius: '4px',
+    letterSpacing: '0.02em',
+  },
+  nonCompleterBadge: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface-variant)',
+    backgroundColor: 'var(--color-surface-container)',
+    padding: '1px 7px',
+    borderRadius: '4px',
+    letterSpacing: '0.01em',
+  },
+  blockText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: '1.55',
+    color: 'var(--color-on-surface-variant)',
+  },
+}
 
 export default function ClassFeedbackPanel({ data, examBoard, subject, topic, studentData, questionStats, scoreDistribution }) {
   const today = new Date().toLocaleDateString('en-GB', {
@@ -87,32 +353,35 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
               {/* Avg tile — primary-container */}
               {classAvgPct != null && (
                 <div style={{ ...styles.statTile, ...styles.statTilePrimary }}>
+                  <span style={styles.tileMicroLabel}>Average</span>
                   <span style={{ ...styles.tileValue, color: 'var(--color-on-primary-container)' }}>{classAvgPct}%</span>
-                  <span style={{ ...styles.tileLabel, color: 'var(--color-on-primary-container)', opacity: 0.7 }}>avg</span>
                 </div>
               )}
 
               {/* Completers tile */}
               {completersCount != null && (
                 <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
+                  <span style={styles.tileMicroLabel}>Completers</span>
                   <span style={styles.tileValue}>{completersCount}</span>
-                  <span style={styles.tileLabel}>completers</span>
                 </div>
               )}
 
               {/* Range tile */}
               {minScore != null && maxScore != null && (
                 <div style={{ ...styles.statTile, ...styles.statTileSurface }}>
-                  <span style={styles.tileValue}>{minScore}–{maxScore}</span>
-                  <span style={styles.tileLabel}>range / {summary.classTotalMax}</span>
+                  <span style={styles.tileMicroLabel}>Range</span>
+                  <span style={{ ...styles.tileValue, fontSize: '18px' }}>
+                    {minScore}–{maxScore}
+                    <span style={styles.tileRangeSuffix}>/{summary.classTotalMax}</span>
+                  </span>
                 </div>
               )}
 
               {/* Absent / non-completers tile */}
               {nonCompletersCount != null && nonCompletersCount > 0 && (
                 <div style={{ ...styles.statTile, ...styles.statTileAlert }}>
+                  <span style={{ ...styles.tileMicroLabel, color: 'var(--color-error)', opacity: 0.7 }}>Absent</span>
                   <span style={{ ...styles.tileValue, color: 'var(--color-error)' }}>{nonCompletersCount}</span>
-                  <span style={{ ...styles.tileLabel, color: 'var(--color-error)', opacity: 0.8 }}>absent</span>
                 </div>
               )}
 
@@ -124,6 +393,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                 <button style={styles.btnPrint} onClick={handlePrint}>
                   <span className="material-symbols-outlined" style={styles.btnIcon}>print</span>
                   Print
+                </button>
+                <button style={styles.btnIndividual}>
+                  <span className="material-symbols-outlined" style={styles.btnIcon}>person</span>
+                  Individual
                 </button>
               </div>
             </div>
@@ -145,62 +418,26 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
 
             {/* Praise in class */}
             <div style={styles.signalCard}>
-              <h3 style={styles.signalHeading}>Praise in class</h3>
-              {praiseList.length > 0 ? (() => {
-                const parsed = praiseList.map(item => {
-                  const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
-                  return { name: match ? match[1] : item, reason: match ? match[2] : null }
-                })
-                const notes = parsed.filter(p => p.reason).map(p => `${p.name}: ${p.reason}`)
-                return (
-                  <>
-                    <div style={styles.praisePillWrap}>
-                      {parsed.map((p, i) => (
-                        <span key={i} style={styles.praisePill}>{p.name}</span>
-                      ))}
-                    </div>
-                    {notes.length > 0 && (
-                      <p style={styles.praiseHint}>{notes.join(' · ')}</p>
-                    )}
-                  </>
-                )
-              })() : (
-                <p style={styles.empty}>No students identified for praise.</p>
-              )}
+              <div style={styles.signalCardHeader}>
+                <span className="material-symbols-outlined filled" style={styles.iconTertiary}>star</span>
+                <h3 style={styles.signalHeading}>Praise in class</h3>
+              </div>
+              {praiseList.length > 0
+                ? <PraiseSection praiseList={praiseList} />
+                : <p style={styles.empty}>No students identified for praise.</p>
+              }
             </div>
 
             {/* Students needing attention */}
             <div style={styles.signalCard}>
-              <h3 style={styles.signalHeading}>Students needing attention</h3>
-              {concernsList.length > 0 ? (
-                <div style={styles.concernsList}>
-                  {concernsList.map((item, i) => {
-                    const parts = item.split(/\s+[—–-]\s+/)
-                    const name = parts[0] ?? item
-                    const label = parts[1] ?? null
-                    return (
-                      <div key={i} style={{
-                        ...styles.concernRow,
-                        borderBottom: i < concernsList.length - 1 ? '1px solid #f3f4f6' : 'none',
-                      }}>
-                        <span style={styles.concernName}>{name}</span>
-                        {label && <span style={styles.concernLabel}>{label}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p style={styles.empty}>No individual concerns identified.</p>
-              )}
-              {/* Non-completers group at bottom */}
-              {nonCompleters.length > 0 && (
-                <div style={styles.nonCompleterGroup}>
-                  <span style={styles.nonCompleterLabel}>Non-completers:</span>
-                  <span style={styles.nonCompleterNames}>
-                    {nonCompleters.join(', ')}
-                  </span>
-                </div>
-              )}
+              <div style={styles.signalCardHeader}>
+                <span className="material-symbols-outlined" style={styles.iconError}>person_alert</span>
+                <h3 style={styles.signalHeading}>Students needing attention</h3>
+              </div>
+              {concernsList.length > 0
+                ? <ConcernSection concernsList={concernsList} />
+                : <p style={styles.empty}>No individual concerns identified.</p>
+              }
             </div>
 
           </div>
@@ -325,24 +562,42 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '10px',
-    padding: '10px 16px',
-    minWidth: '68px',
+    borderRadius: '12px',
+    padding: '12px 18px',
+    minWidth: '80px',
+    gap: '2px',
   },
   statTilePrimary: {
     backgroundColor: 'var(--color-primary-container)',
   },
   statTileSurface: {
     backgroundColor: 'var(--color-surface-container-low)',
+    border: '1px solid rgba(147, 179, 233, 0.20)',
   },
   statTileAlert: {
-    backgroundColor: 'rgba(254, 137, 131, 0.20)',
+    backgroundColor: 'rgba(254, 137, 131, 0.15)',
+    border: '1px solid rgba(159, 64, 61, 0.10)',
+  },
+  tileMicroLabel: {
+    fontSize: '9px',
+    fontWeight: '800',
+    color: 'var(--color-on-surface-variant)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    opacity: 0.7,
   },
   tileValue: {
-    fontSize: '16px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
-    lineHeight: '1.2',
+    fontSize: '22px',
+    fontWeight: '800',
+    color: 'var(--color-on-primary-container)',
+    lineHeight: '1.1',
+    letterSpacing: '-0.02em',
+  },
+  tileRangeSuffix: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface-variant)',
+    marginLeft: '1px',
   },
   tileLabel: {
     fontSize: '10px',
@@ -369,19 +624,33 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    backgroundColor: '#ffffff',
-    color: 'var(--color-on-surface)',
-    fontSize: '13px',
-    fontWeight: '600',
+    border: 'none',
+    background: 'linear-gradient(135deg, #455f88 0%, #39537c 100%)',
+    color: '#f6f7ff',
+    fontSize: '12px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    boxShadow: '0 2px 6px rgba(69, 95, 136, 0.18)',
+  },
+  btnIndividual: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    border: '2px solid var(--color-primary)',
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary)',
+    fontSize: '12px',
+    fontWeight: '700',
     cursor: 'pointer',
     letterSpacing: '0.01em',
   },
   btnIcon: {
     fontSize: '16px',
-    color: 'var(--color-on-surface-variant)',
   },
 
   /* ── Section label (shared) ──────────────────────────────────────────── */
@@ -401,7 +670,7 @@ const styles = {
   },
   signalsGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
     gap: '16px',
   },
   signalCard: {
@@ -411,8 +680,22 @@ const styles = {
     border: '1px solid rgba(93, 93, 120, 0.12)',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
+  signalCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '14px',
+  },
+  iconTertiary: {
+    fontSize: '20px',
+    color: 'var(--color-tertiary)',
+  },
+  iconError: {
+    fontSize: '20px',
+    color: 'var(--color-error)',
+  },
   signalHeading: {
-    margin: '0 0 14px',
+    margin: 0,
     fontSize: '13px',
     fontWeight: '700',
     color: 'var(--color-on-surface)',
@@ -450,21 +733,28 @@ const styles = {
   },
   concernRow: {
     display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '10px',
+    flexDirection: 'column',
+    gap: '4px',
     padding: '8px 0',
-    flexWrap: 'wrap',
   },
   concernName: {
     fontSize: '13px',
     fontWeight: '600',
     color: 'var(--color-on-surface)',
-    flexShrink: 0,
   },
   concernLabel: {
     fontSize: '12px',
     color: '#6b7280',
+    lineHeight: '1.5',
+  },
+  concernBadge: {
+    display: 'inline-block',
+    fontSize: '11px',
+    fontWeight: '500',
+    color: 'var(--color-error)',
+    backgroundColor: 'rgba(254, 137, 131, 0.18)',
+    padding: '3px 8px',
+    borderRadius: '6px',
     lineHeight: '1.5',
   },
   nonCompleterGroup: {
