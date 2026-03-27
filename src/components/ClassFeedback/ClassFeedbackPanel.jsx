@@ -136,9 +136,10 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
               {praiseList.length > 0 ? (
                 <div style={styles.praisePillWrap}>
                   {praiseList.map((item, i) => {
-                    const parts = item.split(/\s+[—–-]\s+/)
-                    const name = parts[0] ?? item
-                    const reason = parts[1] ?? null
+                    // Match "Name — reason" (em/en-dash) or "Name: reason" (colon)
+                    const match = item.match(/^(.+?)(?:\s+[—–]\s+|:\s+)(.+)$/)
+                    const name = match ? match[1] : item
+                    const reason = match ? match[2] : null
                     return (
                       <div key={i} style={styles.praiseRow}>
                         <span style={styles.praisePill}>{name}</span>
@@ -180,7 +181,7 @@ export default function ClassFeedbackPanel({ data, examBoard, subject, topic, st
                 <div style={styles.nonCompleterGroup}>
                   <span style={styles.nonCompleterLabel}>Non-completers:</span>
                   <span style={styles.nonCompleterNames}>
-                    {nonCompleters.map(s => s.name).join(', ')}
+                    {nonCompleters.join(', ')}
                   </span>
                 </div>
               )}

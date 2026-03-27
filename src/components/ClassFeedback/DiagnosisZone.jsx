@@ -92,11 +92,8 @@ const styles = {
 
   /* ── Left: successes ─────────────────────────────────────────────────── */
   successCard: {
-    backgroundColor: '#ffffff',
     borderRadius: '8px',
     padding: '18px 20px',
-    border: '1px solid #e5e7eb',
-    height: '100%',
   },
   successHeading: {
     margin: '0 0 14px',
@@ -113,10 +110,10 @@ const styles = {
     gap: '12px',
   },
   misconceptionCard: {
-    backgroundColor: 'rgba(254, 137, 131, 0.12)',
+    backgroundColor: 'rgba(254, 137, 131, 0.15)',
     borderRadius: '8px',
     padding: '16px 18px',
-    border: '1px solid rgba(159, 64, 61, 0.12)',
+    border: '1px solid rgba(159, 64, 61, 0.10)',
   },
   misconceptionHeading: {
     margin: '0 0 12px',

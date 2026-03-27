@@ -69,7 +69,7 @@ const styles = {
   columns: {
     display: 'flex',
     gap: '0',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
   },
   column: {
     flex: 1,
