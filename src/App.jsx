@@ -167,18 +167,7 @@ function App() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div style={styles.page}>
-      {/* App header — full-width band */}
-      <header style={styles.appHeader}>
-        <div style={styles.headerInner}>
-          <h1 style={styles.appTitle}>UK Science Teacher Tool</h1>
-          <p style={styles.appSubtitle}>
-            Upload class results — generate whole-class and individual student feedback
-          </p>
-        </div>
-      </header>
-
-      {/* Main content */}
+    <>
       <main style={styles.main}>
         <div style={styles.card}>
           <UploadPanel
@@ -235,37 +224,12 @@ function App() {
         </div>
       </main>
 
-      <p style={styles.version}>v0.17c</p>
-    </div>
+      <p style={styles.version}>v0.17d</p>
+    </>
   )
 }
 
 const styles = {
-  page: {
-    minHeight: '100vh',
-  },
-  appHeader: {
-    backgroundColor: '#1e3150',
-    borderBottom: '3px solid #1d4ed8',
-  },
-  headerInner: {
-    maxWidth: '860px',
-    margin: '0 auto',
-    padding: '20px 24px',
-  },
-  appTitle: {
-    margin: '0 0 4px',
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: '-0.01em',
-  },
-  appSubtitle: {
-    margin: '0',
-    fontSize: '13px',
-    color: '#93c5fd',
-    fontWeight: '400',
-  },
   main: {
     maxWidth: '860px',
     margin: '0 auto',
