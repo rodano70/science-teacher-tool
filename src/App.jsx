@@ -266,6 +266,7 @@ function App({ onStepChange, onRegisterNavigate }) {
               data={wcfData}
               wcfLoading={wcfLoading}
               wcfProgress={wcfProgress}
+              wcfError={wcfError}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
@@ -282,6 +283,7 @@ function App({ onStepChange, onRegisterNavigate }) {
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
               feedbackLoading={feedbackLoading}
+              feedbackError={feedbackError}
               feedbackSuccess={feedbackSuccess}
               truncated={truncated}
               onDownloadSuccess={setFeedbackSuccess}

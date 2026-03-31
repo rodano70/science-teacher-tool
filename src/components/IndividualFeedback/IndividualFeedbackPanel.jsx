@@ -13,6 +13,7 @@ function normalizeName(name) {
 export default function IndividualFeedbackPanel({
   feedbackData,
   feedbackLoading,
+  feedbackError = '',
   feedbackSuccess,
   truncated,
   onDownloadSuccess,
@@ -334,6 +335,14 @@ export default function IndividualFeedbackPanel({
         </div>
       </div>
 
+      {/* Error box */}
+      {feedbackError && (
+        <div style={styles.errorBox}>
+          <span style={styles.errorIcon}>!</span>
+          {feedbackError}
+        </div>
+      )}
+
       {/* Filter bar */}
       <div style={styles.filterBar}>
         <div style={styles.filterPills}>
@@ -554,6 +563,33 @@ const styles = {
     padding: '6px 12px',
     background: 'var(--color-surface-container)',
     border: '1px solid rgba(147, 179, 233, 0.3)', borderRadius: '999px',
+  },
+  errorBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    margin: '0 32px 16px',
+    padding: '12px 16px',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    fontSize: '14px',
+    color: '#b91c1c',
+    lineHeight: '1.5',
+  },
+  errorIcon: {
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    backgroundColor: '#b91c1c',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: '700',
+    marginTop: '1px',
   },
   filterBar: { padding: '0 32px', marginBottom: '24px' },
   filterPills: { display: 'flex', gap: '8px', flexWrap: 'wrap' },

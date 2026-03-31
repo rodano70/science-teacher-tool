@@ -1,12 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { extractStudentsForFeedback } from '../classUtils'
 import { downloadFeedbackDoc } from '../utils/docUtils'
 
-// Each tick, advance by max(fraction × remaining gap, min step).
-// Lower fraction slows the initial rush; the min step floor keeps the bar
-// visibly moving near the 90% cap instead of appearing to freeze.
 const PROGRESS_STEP_FRACTION = 0.02
-const PROGRESS_MIN_STEP = 0.5   // % per tick — floor near the cap
+const PROGRESS_MIN_STEP = 0.5
 const PROGRESS_TICK_MS = 250
 const PROGRESS_CAP = 90
 
@@ -28,6 +25,11 @@ export function useIndividualFeedback({
   const [feedbackSuccess, setFeedbackSuccess] = useState(false)
   const [feedbackProgress, setFeedbackProgress] = useState(0)
   const [truncated, setTruncated] = useState(false)
+
+  // Accumulator ref: parsed students are stored here by the stream parser and
+  // flushed to React state on a 250 ms interval so cards appear progressively
+  // regardless of how the network delivers chunks.
+  const pendingStudentsRef = useRef([])
 
   useEffect(() => {
     if (!feedbackLoading) { setFeedbackProgress(0); return }
@@ -86,8 +88,19 @@ Output students in alphabetical order by surname.
 
 Generate personalised WWW / EBI / To Improve feedback for every student who completed the work. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
+    pendingStudentsRef.current = []
     setTruncated(false)
     setFeedbackLoading(true)
+
+    // Flush accumulator to state every 250 ms so student cards appear
+    // progressively as streaming continues.
+    const flushInterval = setInterval(() => {
+      if (pendingStudentsRef.current.length > 0) {
+        const batch = pendingStudentsRef.current.splice(0)
+        setFeedbackData(prev => [...(prev || []), ...batch])
+      }
+    }, 250)
+
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -135,24 +148,19 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
             setTruncated(true)
           } else if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
             textBuffer += event.delta.text
-            // Split on newlines; keep last (potentially incomplete) line in buffer
             const textLines = textBuffer.split('\n')
             textBuffer = textLines.pop() ?? ''
             for (const textLine of textLines) {
               tryParseStudentLine(textLine)
             }
           } else if (event.type === 'message_stop') {
-            // Flush any remaining content in textBuffer
             tryParseStudentLine(textBuffer)
             textBuffer = ''
           }
         }
       }
 
-      // Final flush in case stream ended without message_stop event
-      if (textBuffer.trim()) {
-        tryParseStudentLine(textBuffer)
-      }
+      if (textBuffer.trim()) tryParseStudentLine(textBuffer)
 
     } catch (err) {
       if (err instanceof SyntaxError) {
@@ -161,6 +169,12 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
         setFeedbackError(err.message)
       }
     } finally {
+      clearInterval(flushInterval)
+      // Final flush of any students still in the accumulator
+      if (pendingStudentsRef.current.length > 0) {
+        const remaining = pendingStudentsRef.current.splice(0)
+        setFeedbackData(prev => [...(prev || []), ...remaining])
+      }
       setFeedbackProgress(100)
       setFeedbackLoading(false)
     }
@@ -172,11 +186,10 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
     try {
       const parsed = JSON.parse(trimmed)
       if (!parsed.name) return
-      // Add a score string for backward compat with docUtils
       if (!parsed.isNonCompleter && parsed.total != null && parsed.maxTotal != null) {
         parsed.score = `${parsed.total}/${parsed.maxTotal}`
       }
-      setFeedbackData(prev => [...(prev || []), parsed])
+      pendingStudentsRef.current.push(parsed)
     } catch {
       // Incomplete or malformed JSON line — ignore
     }

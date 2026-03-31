@@ -277,6 +277,7 @@ export default function ClassFeedbackPanel({
   data,
   wcfLoading = false,
   wcfProgress = 0,
+  wcfError = '',
   examBoard,
   subject,
   topic,
@@ -385,6 +386,12 @@ export default function ClassFeedbackPanel({
             <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
           </div>
         </div>
+        {wcfError && (
+          <div style={styles.errorBox}>
+            <span style={styles.errorIcon}>!</span>
+            {wcfError}
+          </div>
+        )}
       </div>
     )
   }
@@ -411,6 +418,12 @@ export default function ClassFeedbackPanel({
             </button>
           )}
         </div>
+        {wcfError && (
+          <div style={styles.errorBox}>
+            <span style={styles.errorIcon}>!</span>
+            {wcfError}
+          </div>
+        )}
         <div style={styles.emptyInner}>
           <div style={styles.emptyCard}>
             <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
@@ -722,6 +735,35 @@ const styles = {
     fontSize: '14px',
     color: 'var(--color-on-surface-variant)',
     lineHeight: '1.6',
+  },
+
+  /* ── Error box ───────────────────────────────────────────────────────── */
+  errorBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    margin: '16px 32px 0',
+    padding: '12px 16px',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    fontSize: '14px',
+    color: '#b91c1c',
+    lineHeight: '1.5',
+  },
+  errorIcon: {
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    backgroundColor: '#b91c1c',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: '700',
+    marginTop: '1px',
   },
 
   /* ── Wrapper ─────────────────────────────────────────────────────────── */
