@@ -1,17 +1,102 @@
 /**
  * DiagnosisZone — Zone 2 of the WCF sheet.
- * Organises three data arrays into a single visual hierarchy:
- *   Left (7/12): "What the class understood" — successes with primary left-bar decorators
- *   Right (5/12, stacked):
- *     Top: "Misconceptions to reteach" — error-tinted card
- *     Bottom: "Surface errors to address briefly" — surface-container-low card
+ * Left (1/2): "What the class understood" — successes with primary left-bar decorators
+ * Right (1/2, stacked):
+ *   Top: "Misconceptions to reteach" — error-tinted card
+ *   Bottom: "Surface errors to address briefly" — surface-container-low card
  *
  * Props:
- *   successes    — key_successes array
- *   misconceptions — key_misconceptions array
- *   little_errors  — little_errors array
+ *   successes        — key_successes array
+ *   misconceptions   — key_misconceptions array
+ *   little_errors    — little_errors array
+ *   onEdit(field, index, value) — optional edit callback
  */
-export default function DiagnosisZone({ successes, misconceptions, little_errors }) {
+import { useState, useRef, useEffect } from 'react'
+
+function EditableItem({ value, onChange, textStyle }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(value)
+  const ref = useRef(null)
+
+  useEffect(() => { setVal(value) }, [value])
+
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.focus()
+      ref.current.style.height = 'auto'
+      ref.current.style.height = ref.current.scrollHeight + 'px'
+    }
+  }, [editing])
+
+  if (editing) {
+    return (
+      <textarea
+        ref={ref}
+        value={val}
+        onChange={e => {
+          setVal(e.target.value)
+          if (ref.current) {
+            ref.current.style.height = 'auto'
+            ref.current.style.height = ref.current.scrollHeight + 'px'
+          }
+        }}
+        onBlur={() => { setEditing(false); onChange(val) }}
+        onKeyDown={e => { if (e.key === 'Escape') { setVal(value); setEditing(false) } }}
+        style={{ ...editStyles.textarea, ...(textStyle || {}) }}
+      />
+    )
+  }
+
+  return (
+    <span
+      className="wcf-editable"
+      onClick={() => onChange !== undefined ? setEditing(true) : undefined}
+      style={{ ...editStyles.span, ...(textStyle || {}), cursor: onChange ? 'text' : 'default' }}
+      title={onChange ? 'Click to edit' : undefined}
+    >
+      {val}
+      {onChange && <span style={editStyles.pencil} className="wcf-pencil">✏</span>}
+    </span>
+  )
+}
+
+const editStyles = {
+  span: {
+    display: 'block',
+    borderRadius: '4px',
+    padding: '1px 3px',
+    marginLeft: '-3px',
+    position: 'relative',
+    transition: 'background-color 0.1s',
+  },
+  pencil: {
+    marginLeft: '5px',
+    fontSize: '10px',
+    opacity: 0,
+    transition: 'opacity 0.15s',
+    pointerEvents: 'none',
+    verticalAlign: 'middle',
+  },
+  textarea: {
+    width: '100%',
+    border: '1px solid var(--color-primary)',
+    borderRadius: '4px',
+    padding: '3px 6px',
+    fontSize: '13px',
+    lineHeight: '1.55',
+    color: 'var(--color-on-surface-variant)',
+    backgroundColor: 'var(--color-surface-container-low)',
+    fontFamily: 'inherit',
+    resize: 'none',
+    outline: 'none',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+    display: 'block',
+    minHeight: '22px',
+  },
+}
+
+export default function DiagnosisZone({ successes, misconceptions, little_errors, onEdit }) {
   const toArray = v => Array.isArray(v) ? v : (v ? [v] : [])
   const successList = toArray(successes)
   const misconceptionList = toArray(misconceptions)
@@ -19,10 +104,14 @@ export default function DiagnosisZone({ successes, misconceptions, little_errors
 
   return (
     <div style={styles.wrapper}>
+      <style>{`
+        .wcf-editable:hover { background-color: rgba(147,179,233,0.12); }
+        .wcf-editable:hover .wcf-pencil { opacity: 0.5; }
+      `}</style>
       <p style={styles.sectionLabel}>Assessment Diagnosis</p>
       <div style={styles.grid}>
 
-        {/* ── Left: What the class understood ───────────────────────────── */}
+        {/* ── Left: What the class understood ─────────────────────────── */}
         <div style={styles.successCard} className="print-card">
           <div style={styles.cardHeader}>
             <span className="material-symbols-outlined filled" style={styles.iconPrimary}>verified</span>
@@ -33,7 +122,11 @@ export default function DiagnosisZone({ successes, misconceptions, little_errors
               {successList.map((item, i) => (
                 <li key={i} style={styles.barItem}>
                   <span style={styles.primaryBar} />
-                  <span style={styles.itemText}>{item}</span>
+                  <EditableItem
+                    value={item}
+                    onChange={onEdit ? (val) => onEdit('key_successes', i, val) : undefined}
+                    textStyle={styles.itemText}
+                  />
                 </li>
               ))}
             </ul>
@@ -42,7 +135,7 @@ export default function DiagnosisZone({ successes, misconceptions, little_errors
           )}
         </div>
 
-        {/* ── Right: two stacked cards ───────────────────────────────────── */}
+        {/* ── Right: two stacked cards ─────────────────────────────────── */}
         <div style={styles.rightStack}>
 
           {/* Misconceptions to reteach */}
@@ -56,7 +149,11 @@ export default function DiagnosisZone({ successes, misconceptions, little_errors
                 {misconceptionList.map((item, i) => (
                   <li key={i} style={styles.barItem}>
                     <span style={styles.errorBar} />
-                    <span style={styles.itemText}>{item}</span>
+                    <EditableItem
+                      value={item}
+                      onChange={onEdit ? (val) => onEdit('key_misconceptions', i, val) : undefined}
+                      textStyle={styles.itemText}
+                    />
                   </li>
                 ))}
               </ul>
@@ -76,7 +173,11 @@ export default function DiagnosisZone({ successes, misconceptions, little_errors
                 {errorList.map((item, i) => (
                   <li key={i} style={styles.dotItem}>
                     <span style={styles.dotBullet} />
-                    <span style={styles.itemText}>{item}</span>
+                    <EditableItem
+                      value={item}
+                      onChange={onEdit ? (val) => onEdit('little_errors', i, val) : undefined}
+                      textStyle={styles.itemText}
+                    />
                   </li>
                 ))}
               </ul>
@@ -106,7 +207,7 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: '7fr 5fr',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
     gap: '16px',
     alignItems: 'start',
   },

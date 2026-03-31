@@ -2,7 +2,7 @@
 
 const SIDEBAR_WIDTH = 256
 
-export default function AppShell({ children, onReset, activeStep = 0 }) {
+export default function AppShell({ children, onReset, activeStep = 0, onStepClick }) {
   return (
     <div style={styles.root}>
 
@@ -87,14 +87,27 @@ export default function AppShell({ children, onReset, activeStep = 0 }) {
 
         {/* Stepper */}
         <div style={styles.stepperBar}>
-          {steps.map((step, i) => (
-            <div key={i} style={styles.stepItem}>
-              <span style={i === activeStep ? styles.stepLabelActive : styles.stepLabelInactive}>
-                {step}
-              </span>
-              {i === activeStep && <div style={styles.stepUnderline} />}
-            </div>
-          ))}
+          {steps.map((step, i) => {
+            const isActive = i === activeStep
+            const isDisabled = step.disabled
+            return (
+              <div
+                key={i}
+                style={{
+                  ...styles.stepItem,
+                  cursor: isDisabled ? 'default' : 'pointer',
+                  opacity: isDisabled ? 0.4 : 1,
+                }}
+                onClick={() => !isDisabled && onStepClick?.(i)}
+                title={isDisabled ? 'Coming soon' : undefined}
+              >
+                <span style={isActive ? styles.stepLabelActive : styles.stepLabelInactive}>
+                  {step.label}
+                </span>
+                {isActive && <div style={styles.stepUnderline} />}
+              </div>
+            )
+          })}
         </div>
 
         {/* Content — no padding; each panel manages its own */}
@@ -107,7 +120,12 @@ export default function AppShell({ children, onReset, activeStep = 0 }) {
   )
 }
 
-const steps = ['1. Upload', '2. Feedback', '3. Dashboard']
+const steps = [
+  { label: '1. Upload', disabled: false },
+  { label: '2. Whole Class Feedback', disabled: false },
+  { label: '3. Individual Feedback', disabled: false },
+  { label: '4. Dashboard', disabled: true },
+]
 
 /* ── Styles ─────────────────────────────────────────────────────────────── */
 

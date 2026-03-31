@@ -39,6 +39,7 @@ export default function IndividualFeedbackPanel({
   )
   const expectedTotal = rawStudents.length
   const expectedNonCompleters = rawStudents.filter(s => s.total === 0).length
+  const expectedCompleters = rawStudents.filter(s => s.total > 0).length
 
   // name → breakdown string map with two keys per student:
   // direct key (classUtils format, e.g. "John Smith") and
@@ -59,8 +60,23 @@ export default function IndividualFeedbackPanel({
   }
 
   const students = feedbackData || []
-  const completers = students.filter(s => !s.isNonCompleter)
+  const completers = students.filter(s => !s.isNonCompleter && !s.isMissingFeedback)
   const nonCompleters = students.filter(s => s.isNonCompleter)
+
+  // Detect completers from rawStudents that never appeared in feedbackData.
+  // Only compute when loading is finished to avoid flickering.
+  const missingStudents = useMemo(() => {
+    if (feedbackLoading || !feedbackData || feedbackData.length === 0) return []
+    const generatedNames = new Set(
+      feedbackData.filter(s => !s.isNonCompleter).map(s => normalizeName(s.name))
+    )
+    const nonCompleterNames = new Set(
+      rawStudents.filter(s => s.total === 0).map(s => normalizeName(s.name))
+    )
+    return rawStudents
+      .filter(s => s.total > 0 && !generatedNames.has(normalizeName(s.name)) && !nonCompleterNames.has(normalizeName(s.name)))
+      .map(s => ({ ...s, isMissingFeedback: true }))
+  }, [feedbackLoading, feedbackData, rawStudents])
 
   const classStats = useMemo(() => {
     if (completers.length === 0) return { classAvg: 0, maxTotal: 1 }
@@ -72,7 +88,7 @@ export default function IndividualFeedbackPanel({
   // Seed editsRef with original API values whenever students array grows
   useEffect(() => {
     students.forEach(s => {
-      if (!s.isNonCompleter && !editsRef.current[s.name]) {
+      if (!s.isNonCompleter && !s.isMissingFeedback && !editsRef.current[s.name]) {
         editsRef.current[s.name] = {
           www: s.www,
           ebi: s.ebi,
@@ -89,6 +105,9 @@ export default function IndividualFeedbackPanel({
     }
   }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // All displayed students: API results + missing placeholders
+  const allStudents = [...students, ...missingStudents]
+
   const filteredStudents = useMemo(() => {
     if (activeFilter === 'noSubmission') return nonCompleters
     if (activeFilter === 'needsReview') {
@@ -97,20 +116,22 @@ export default function IndividualFeedbackPanel({
         return pct < threshold
       })
     }
-    return students
-  }, [students, activeFilter, threshold, classStats, completers, nonCompleters])
+    return allStudents
+  }, [allStudents, activeFilter, threshold, classStats, completers, nonCompleters])
 
   async function handleDownload() {
-    const exportData = students.map(s =>
-      s.isNonCompleter
-        ? s
-        : {
-            ...s,
-            www: editsRef.current[s.name]?.www ?? s.www,
-            ebi: editsRef.current[s.name]?.ebi ?? s.ebi,
-            to_improve: editsRef.current[s.name]?.toImprove ?? s.to_improve,
-          }
-    )
+    const exportData = allStudents
+      .filter(s => !s.isMissingFeedback)
+      .map(s =>
+        s.isNonCompleter
+          ? s
+          : {
+              ...s,
+              www: editsRef.current[s.name]?.www ?? s.www,
+              ebi: editsRef.current[s.name]?.ebi ?? s.ebi,
+              to_improve: editsRef.current[s.name]?.toImprove ?? s.to_improve,
+            }
+      )
     await downloadFeedbackDoc({ feedbackData: exportData, subject, topic, setFeedbackSuccess: onDownloadSuccess })
   }
 
@@ -118,6 +139,51 @@ export default function IndividualFeedbackPanel({
   const classAvgPct = classStats.maxTotal > 0
     ? Math.round((classStats.classAvg / classStats.maxTotal) * 100)
     : 0
+
+  // ── Empty state ────────────────────────────────────────────────────────
+  const hasNoData = !feedbackLoading && feedbackData === null
+  if (hasNoData) {
+    return (
+      <div style={styles.wrapper}>
+        <style>{`
+          .ifp-back-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 16px;
+            background: transparent;
+            color: var(--color-on-surface-variant);
+            border: 1px solid var(--color-outline-variant); border-radius: 8px;
+            font-family: inherit; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: background-color 0.15s;
+          }
+          .ifp-back-btn:hover { background: var(--color-surface-container-high); }
+        `}</style>
+        <div style={styles.hero}>
+          <span style={styles.heroEyebrow}>Assessment Intelligence</span>
+          <h1 style={styles.heroTitle}>
+            Individual Student{' '}
+            <br />
+            <span style={styles.heroAccent}>Feedback Review</span>
+          </h1>
+        </div>
+        <div style={styles.emptyWrapper}>
+          <div style={styles.emptyCard}>
+            <span className="material-symbols-outlined" style={styles.emptyIcon}>person</span>
+            <h2 style={styles.emptyTitle}>No individual feedback yet</h2>
+            <p style={styles.emptyDesc}>
+              Go to the Upload section, upload your marksheet and fill in the exam details, then click{' '}
+              <strong>Generate Individual Student Feedback</strong>.
+            </p>
+            {onBack && (
+              <button className="ifp-back-btn" onClick={onBack} type="button">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+                Back to Setup
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={styles.wrapper}>
@@ -169,8 +235,7 @@ export default function IndividualFeedbackPanel({
           padding: 8px 16px;
           background: transparent;
           color: var(--color-on-surface-variant);
-          border: 1px solid var(--color-outline-variant);
-          border-radius: 8px;
+          border: 1px solid var(--color-outline-variant); border-radius: 8px;
           font-family: inherit; font-size: 14px; font-weight: 500;
           cursor: pointer; transition: background-color 0.15s;
         }
@@ -178,9 +243,17 @@ export default function IndividualFeedbackPanel({
         .sc-field-wrapper { position: relative; cursor: pointer; }
         .sc-field-pencil { position: absolute; top: 0; right: 0; font-size: 15px !important; color: var(--color-on-surface-variant); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
         .sc-field-wrapper:hover .sc-field-pencil { opacity: 1; }
+        .ifp-missing-card {
+          display: flex; align-items: center; gap: 12px;
+          padding: 14px 20px;
+          background: var(--color-surface-container-low);
+          border: 1px dashed var(--color-outline-variant);
+          border-radius: 12px;
+          opacity: 0.75;
+        }
       `}</style>
 
-      {/* Hero title — matches UploadPanel hero style */}
+      {/* Hero title */}
       <div style={styles.hero}>
         <span style={styles.heroEyebrow}>Assessment Intelligence</span>
         <h1 style={styles.heroTitle}>
@@ -191,7 +264,7 @@ export default function IndividualFeedbackPanel({
         {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
       </div>
 
-      {/* Action bar — back, switch, download */}
+      {/* Action bar */}
       <div style={styles.actionBar}>
         {onBack && (
           <button className="ifp-back-btn" onClick={onBack} type="button">
@@ -217,7 +290,7 @@ export default function IndividualFeedbackPanel({
       <div style={styles.statsBar}>
         <div style={styles.statItem}>
           <p style={styles.statLabel}>Total Students</p>
-          <p style={styles.statValue}>{expectedTotal || students.length}</p>
+          <p style={styles.statValue}>{expectedTotal || allStudents.length}</p>
         </div>
         <div style={styles.divider} />
         <div style={styles.statItem}>
@@ -229,6 +302,15 @@ export default function IndividualFeedbackPanel({
           <p style={styles.statLabel}>No Submission</p>
           <p style={{ ...styles.statValue, color: 'var(--color-error)' }}>{expectedNonCompleters || nonCompleters.length}</p>
         </div>
+        {!feedbackLoading && missingStudents.length > 0 && (
+          <>
+            <div style={styles.divider} />
+            <div style={styles.statItem}>
+              <p style={styles.statLabel}>Not Returned</p>
+              <p style={{ ...styles.statValue, color: 'var(--color-on-surface-variant)' }}>{missingStudents.length}</p>
+            </div>
+          </>
+        )}
         <div style={styles.generatingSlot}>
           {feedbackLoading && (
             <div style={styles.generatingPill}>
@@ -285,25 +367,46 @@ export default function IndividualFeedbackPanel({
 
       {/* Card list */}
       <div style={styles.cardList}>
-        {filteredStudents.map((student, i) => (
-          <StudentCard
-            key={i}
-            student={
-              student.breakdown
-                ? student
-                : { ...student, breakdown: getBreakdown(student.name) }
-            }
-            threshold={threshold}
-            maxTotal={classStats.maxTotal}
-            questionTexts={questionTexts}
-            onChange={(field, value) => {
-              editsRef.current[student.name] = {
-                ...editsRef.current[student.name],
-                [field]: value,
+        {filteredStudents.map((student, i) => {
+          // Missing feedback placeholder
+          if (student.isMissingFeedback) {
+            return (
+              <div key={`missing-${i}`} className="ifp-missing-card">
+                <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-on-surface-variant)', flexShrink: 0 }}>
+                  help_outline
+                </span>
+                <div>
+                  <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: '700', color: 'var(--color-on-surface)' }}>
+                    {student.name}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-on-surface-variant)' }}>
+                    Feedback was not returned for this student. Score: {student.total}/{student.maxTotal}. Try regenerating.
+                  </p>
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <StudentCard
+              key={i}
+              student={
+                student.breakdown
+                  ? student
+                  : { ...student, breakdown: getBreakdown(student.name) }
               }
-            }}
-          />
-        ))}
+              threshold={threshold}
+              maxTotal={classStats.maxTotal}
+              questionTexts={questionTexts}
+              onChange={(field, value) => {
+                editsRef.current[student.name] = {
+                  ...editsRef.current[student.name],
+                  [field]: value,
+                }
+              }}
+            />
+          )
+        })}
 
         {feedbackLoading && (
           <div style={styles.loadingBlock}>
@@ -323,9 +426,9 @@ export default function IndividualFeedbackPanel({
 
 const styles = {
   wrapper: {
-    paddingTop: '0',
+    paddingTop: '40px',
   },
-  // Hero title — mirrors UploadPanel hero style exactly
+  // Hero title
   hero: {
     padding: '0 48px',
     marginBottom: '32px',
@@ -358,6 +461,41 @@ const styles = {
     textTransform: 'uppercase',
     color: 'var(--color-on-surface-variant)',
   },
+  // Empty state
+  emptyWrapper: {
+    padding: '0 48px 64px',
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  emptyCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    maxWidth: '420px',
+    padding: '48px 40px',
+    backgroundColor: 'var(--color-surface-container-low)',
+    borderRadius: '16px',
+    border: '1px solid rgba(147, 179, 233, 0.15)',
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    color: 'var(--color-outline)',
+    marginBottom: '16px',
+  },
+  emptyTitle: {
+    margin: '0 0 12px',
+    fontSize: '20px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+  },
+  emptyDesc: {
+    margin: '0 0 24px',
+    fontSize: '14px',
+    color: 'var(--color-on-surface-variant)',
+    lineHeight: '1.6',
+  },
+  // Action bar
   actionBar: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -385,85 +523,31 @@ const styles = {
     marginRight: '48px',
     flexWrap: 'wrap',
   },
-  statItem: {
-    flexShrink: 0,
-  },
+  statItem: { flexShrink: 0 },
   statLabel: {
     margin: '0 0 2px',
-    fontSize: '10px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    color: 'var(--color-on-surface-variant)',
+    fontSize: '10px', fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: '0.06em', color: 'var(--color-on-surface-variant)',
   },
-  statValue: {
-    margin: '0',
-    fontSize: '22px',
-    fontWeight: '900',
-    color: 'var(--color-on-surface)',
-  },
-  divider: {
-    width: '1px',
-    height: '32px',
-    backgroundColor: 'rgba(147, 179, 233, 0.2)',
-    flexShrink: 0,
-  },
-  generatingSlot: {
-    marginLeft: 'auto',
-  },
+  statValue: { margin: '0', fontSize: '22px', fontWeight: '900', color: 'var(--color-on-surface)' },
+  divider: { width: '1px', height: '32px', backgroundColor: 'rgba(147, 179, 233, 0.2)', flexShrink: 0 },
+  generatingSlot: { marginLeft: 'auto' },
   generatingPill: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+    display: 'flex', alignItems: 'center', gap: '8px',
     padding: '6px 12px',
     background: 'var(--color-surface-container)',
-    border: '1px solid rgba(147, 179, 233, 0.3)',
-    borderRadius: '999px',
+    border: '1px solid rgba(147, 179, 233, 0.3)', borderRadius: '999px',
   },
-  filterBar: {
-    padding: '0 48px',
-    marginBottom: '24px',
-  },
-  filterPills: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  thresholdInner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    paddingTop: '12px',
-  },
-  thresholdLabel: {
-    fontSize: '13px',
-    color: 'var(--color-on-surface)',
-    whiteSpace: 'nowrap',
-  },
-  thresholdNote: {
-    fontSize: '12px',
-    color: 'var(--color-on-surface-variant)',
-    fontWeight: '400',
-    marginLeft: '4px',
-  },
-  rangeInput: {
-    flexShrink: 0,
-    width: '160px',
-    accentColor: 'var(--color-primary)',
-    cursor: 'pointer',
-  },
-  cardList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    padding: '0 48px 48px',
-  },
+  filterBar: { padding: '0 48px', marginBottom: '24px' },
+  filterPills: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  thresholdInner: { display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '12px' },
+  thresholdLabel: { fontSize: '13px', color: 'var(--color-on-surface)', whiteSpace: 'nowrap' },
+  thresholdNote: { fontSize: '12px', color: 'var(--color-on-surface-variant)', fontWeight: '400', marginLeft: '4px' },
+  rangeInput: { flexShrink: 0, width: '160px', accentColor: 'var(--color-primary)', cursor: 'pointer' },
+  cardList: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 48px 48px' },
   loadingBlock: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
+    display: 'flex', alignItems: 'center', gap: '10px',
     padding: '16px 20px',
-    background: 'var(--color-surface-container-low)',
-    borderRadius: '12px',
+    background: 'var(--color-surface-container-low)', borderRadius: '12px',
   },
 }

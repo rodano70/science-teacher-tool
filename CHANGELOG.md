@@ -1,5 +1,96 @@
 # Changelog
 
+## v0.23c — Stepper navigation restored and extended to 4 steps
+
+- AppShell.jsx: stepper updated from 3 steps (`1. Upload / 2. Feedback / 3. Dashboard`)
+  to 4 steps (`1. Upload / 2. Whole Class Feedback / 3. Individual Feedback / 4. Dashboard`).
+  Step items are now clickable — each triggers `onStepClick(index)` passed as a prop.
+  Step 4 (Dashboard) is disabled (opacity 0.4, no pointer, "Coming soon" tooltip) until
+  implemented.
+- AppPage.jsx: `navigateRef` stores the navigate function exposed by App; `handleStepClick`
+  relays stepper clicks to it. `onRegisterNavigate` prop passed to App.
+- App.jsx: `onRegisterNavigate` prop registers a `(stepIndex) → setActiveOutput` function
+  with AppPage after each mount; `onStepChange` now maps `activeOutput` to 4-step indices
+  (null→0, 'wcf'→1, 'individual'→2). Navigation works correctly whether or not data has
+  been loaded: clicking step 2 or 3 without data shows the respective empty state, with a
+  "← Back to Setup" button.
+- LandingPage.jsx: version updated from v0.20 to v0.23c.
+- App.jsx: version label updated to v0.23c.
+
+## v0.23b — WCF editable text + download, navigation fixes, missing students, layout polish
+
+### Section 3 – Individual Student Feedback
+- **Missing students troubleshoot**: After streaming completes, any completers from the
+  uploaded marksheet that the API did not return a card for are detected and shown as
+  "Not Returned" placeholder cards (dashed border, score + "Try regenerating" note).
+  A new "Not Returned" stat tile appears in the stats bar so the count discrepancy is
+  immediately visible and explained (e.g. "30 total, 22 generated, 6 no submission, 2
+  not returned").
+- **Generation preserved during navigation**: `onSwitchToWCF` no longer calls
+  `setFeedbackData(null)` — switching to the WCF panel while individual feedback is
+  streaming no longer loses the in-progress results. The stream continues in the
+  background; navigating back to section 3 shows all cards received so far.
+- **Empty state**: when `feedbackData === null` (never generated) and not loading,
+  section 3 shows the same-style empty state as section 2 — hero + card with message
+  "No individual feedback yet. Go to the Upload section …" and a "← Back to Setup"
+  button.
+- **Top spacing**: `paddingTop: '40px'` added to the wrapper, matching section 1.
+
+### Section 2 – Whole Class Feedback
+- **Editable text**: all WCF text fields are now click-to-edit in place — key successes,
+  misconceptions, surface errors, immediate action, long-term implications, praise
+  descriptions, and concern descriptions all use an inline `EditableItem` textarea
+  (1px primary-coloured border on focus, auto-resizes, Escape to cancel, blur to
+  commit). Edits flow into the downloaded Word document without affecting the stored
+  `wcfData` in memory.
+- **Download Word Document button**: replaces the old "Print" button in the action bar
+  (screen-only). Calls new `downloadWCFDoc` utility. Generates a properly structured
+  .docx file with title block, class stats, Assessment Diagnosis section (three
+  sub-sections with bold colour-coded headings and bullet points), Teaching
+  Implications section (Immediate + Long-term), and Individual Signals section
+  (Praise + Concerns). A Print (icon) button remains inside the sheet header for
+  quick printing.
+- **"Individual Student Feedback" button**: added to action bar beside "Download Word
+  Document", matching the style of section 3's "Whole Class Feedback" switch button.
+  Wired to `onSwitchToIndividual` (preserves all data; does not regenerate).
+- **Praise pill active state**: fixed — active pills now show a 2px primary-coloured
+  border only, without overriding the background colour. Behaviour now matches the
+  "Students needing attention" toggles exactly.
+- **Symmetric column widths** in Assessment Diagnosis: `DiagnosisZone` grid changed
+  from `7fr 5fr` to `minmax(0,1fr) minmax(0,1fr)` so "What the class understood" and
+  "Misconceptions to reteach" columns are equal width, matching the "Individual
+  Signals" grid.
+- **Symmetric Teaching Implications columns**: `ImplicationsZone` grid changed from
+  `5fr 40px 6fr` to `minmax(0,1fr) 40px minmax(0,1fr)` so the vertical rule is
+  centred and both columns are equal.
+- **Empty state**: when `data` is null (no WCF generated yet), section 2 renders a
+  centred card with message "No class feedback yet. Go to the Upload section …" and
+  a "← Back to Setup" button, identical in style to section 3.
+- **Top spacing + hero**: `paddingTop: '40px'` on the wrapper; a full hero header
+  ("Assessment Intelligence" eyebrow, "Whole Class Feedback Sheet" h1 with primary-
+  coloured accent, exam/subject/topic context line) added above the action bar and
+  sheet — matches section 1 and 3 hero styling exactly.
+
+### Navigation & UX
+- **"← Back to Setup" in WCF panel**: `onBack` prop added to `ClassFeedbackPanel`
+  and wired in `App.jsx` to `() => setActiveOutput(null)`.
+- **Cross-panel data preservation**: `onClickGenerateWCF` no longer clears
+  `feedbackData`; `onClickGenerateFeedback` no longer clears `wcfData`. Both panels
+  can coexist — generating one does not erase the other. Resume buttons for both
+  appear simultaneously on the upload page when both data sets exist.
+- **WCF render condition relaxed**: `App.jsx` renders `ClassFeedbackPanel` whenever
+  `activeOutput === 'wcf'` (previously required `wcfData` to be truthy), enabling
+  the empty state to show when the user navigates there before generating.
+- `docUtils.js`: improved `downloadFeedbackDoc` layout — title + date subtitle,
+  colour-coded section labels (WWW blue, EBI dark, To Improve purple), indented body
+  text, separator lines between students.
+
+### General
+- **Consistent top spacing** across sections: all three output panels (Upload, WCF,
+  Individual) now have 40 px top padding creating uniform breathing room below the
+  sticky navigation bar.
+- **Version label**: bumped to v0.23b in `App.jsx`.
+
 ## v0.22f — Dedicated feedback page, correct pill colours, hero title consistency
 
 - App.jsx: UploadPanel and output panels are now mutually exclusive — clicking either

@@ -7,7 +7,7 @@ import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
-function App({ onStepChange }) {
+function App({ onStepChange, onRegisterNavigate }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -30,10 +30,23 @@ function App({ onStepChange }) {
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
 
-  // Wire stepper: null → step 0, wcf/individual → step 1
+  // Wire stepper step index: null→0, wcf→1, individual→2
   useEffect(() => {
-    onStepChange?.(activeOutput === null ? 0 : 1)
+    if (activeOutput === null) onStepChange?.(0)
+    else if (activeOutput === 'wcf') onStepChange?.(1)
+    else if (activeOutput === 'individual') onStepChange?.(2)
   }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register navigate function with parent (AppPage) so the stepper can drive navigation.
+  // Re-registers whenever activeOutput changes so the closure captures current state.
+  useEffect(() => {
+    onRegisterNavigate?.((stepIndex) => {
+      if (stepIndex === 0) setActiveOutput(null)
+      else if (stepIndex === 1) setActiveOutput('wcf')
+      else if (stepIndex === 2) setActiveOutput('individual')
+      // stepIndex 3 = Dashboard (not yet implemented)
+    })
+  }, [onRegisterNavigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 
@@ -114,30 +127,32 @@ function App({ onStepChange }) {
     setActiveOutput,
   })
 
-  // Cross-panel clearing: each button clears the other panel before delegating to its hook handler
+  // Generate WCF from upload page — each panel keeps its own data intact
   function onClickGenerateWCF() {
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
+    setWcfError('')
     handleGenerateWCF()
   }
 
+  // Generate individual feedback from upload page — each panel keeps its own data intact
   function onClickGenerateFeedback() {
-    setActiveOutput('individual')
-    setWcfData(null)
-    setWcfError('')
+    setFeedbackError('')
+    setFeedbackSuccess(false)
     handleGenerateFeedback()
   }
 
+  // Switch from individual → WCF without clearing feedbackData.
+  // Generation continues in background if still streaming.
   function onSwitchToWCF() {
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
     if (wcfData) {
       setActiveOutput('wcf')
     } else {
       handleGenerateWCF()
     }
+  }
+
+  // Switch from WCF → individual without clearing wcfData.
+  function onSwitchToIndividual() {
+    setActiveOutput('individual')
   }
 
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
@@ -244,8 +259,8 @@ function App({ onStepChange }) {
             </>
           )}
 
-          {/* ── Feedback page (step 2) ───────────────────────────────────── */}
-          {activeOutput === 'wcf' && wcfData && (
+          {/* ── WCF page (step 2) ────────────────────────────────────────── */}
+          {activeOutput === 'wcf' && (
             <ClassFeedbackPanel
               data={wcfData}
               examBoard={examBoard}
@@ -254,9 +269,12 @@ function App({ onStepChange }) {
               studentData={studentData}
               questionStats={questionStats}
               scoreDistribution={scoreDistribution}
+              onBack={() => setActiveOutput(null)}
+              onSwitchToIndividual={onSwitchToIndividual}
             />
           )}
 
+          {/* ── Individual feedback page (step 2) ────────────────────────── */}
           {activeOutput === 'individual' && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
@@ -276,7 +294,7 @@ function App({ onStepChange }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.22f</p>
+      <p style={styles.version}>v0.23c</p>
     </>
   )
 }
