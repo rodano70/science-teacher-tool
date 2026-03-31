@@ -114,30 +114,32 @@ function App({ onStepChange }) {
     setActiveOutput,
   })
 
-  // Cross-panel clearing: each button clears the other panel before delegating to its hook handler
+  // Generate WCF from upload page — each panel keeps its own data intact
   function onClickGenerateWCF() {
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
+    setWcfError('')
     handleGenerateWCF()
   }
 
+  // Generate individual feedback from upload page — each panel keeps its own data intact
   function onClickGenerateFeedback() {
-    setActiveOutput('individual')
-    setWcfData(null)
-    setWcfError('')
+    setFeedbackError('')
+    setFeedbackSuccess(false)
     handleGenerateFeedback()
   }
 
+  // Switch from individual → WCF without clearing feedbackData.
+  // Generation continues in background if still streaming.
   function onSwitchToWCF() {
-    setFeedbackData(null)
-    setFeedbackError('')
-    setFeedbackSuccess(false)
     if (wcfData) {
       setActiveOutput('wcf')
     } else {
       handleGenerateWCF()
     }
+  }
+
+  // Switch from WCF → individual without clearing wcfData.
+  function onSwitchToIndividual() {
+    setActiveOutput('individual')
   }
 
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
@@ -244,8 +246,8 @@ function App({ onStepChange }) {
             </>
           )}
 
-          {/* ── Feedback page (step 2) ───────────────────────────────────── */}
-          {activeOutput === 'wcf' && wcfData && (
+          {/* ── WCF page (step 2) ────────────────────────────────────────── */}
+          {activeOutput === 'wcf' && (
             <ClassFeedbackPanel
               data={wcfData}
               examBoard={examBoard}
@@ -254,9 +256,12 @@ function App({ onStepChange }) {
               studentData={studentData}
               questionStats={questionStats}
               scoreDistribution={scoreDistribution}
+              onBack={() => setActiveOutput(null)}
+              onSwitchToIndividual={onSwitchToIndividual}
             />
           )}
 
+          {/* ── Individual feedback page (step 2) ────────────────────────── */}
           {activeOutput === 'individual' && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
@@ -276,7 +281,7 @@ function App({ onStepChange }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.22f</p>
+      <p style={styles.version}>v0.23b</p>
     </>
   )
 }
