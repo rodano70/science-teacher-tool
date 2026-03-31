@@ -497,7 +497,7 @@ export default function ClassFeedbackPanel({
           {wcfLoading && (
             <span style={styles.streamingPill}>
               <span style={styles.streamingDot} />
-              Generating…
+              {`Generating… ${Object.keys(editedData).length} of 7 sections`}
             </span>
           )}
           {onSwitchToIndividual && !wcfLoading && (

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { flushSync } from 'react-dom'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 
 // Each tick, advance by max(fraction × remaining gap, min step).
@@ -163,9 +162,7 @@ Base your analysis on the question averages and student performance data provide
       const parsed = JSON.parse(trimmed)
       if (!parsed.section || !SECTION_KEYS.includes(parsed.section)) return
       if (parsed.data === undefined) return
-      flushSync(() => {
-        setWcfData(prev => ({ ...(prev || {}), [parsed.section]: parsed.data }))
-      })
+      setWcfData(prev => ({ ...(prev || {}), [parsed.section]: parsed.data }))
     } catch {
       // Incomplete or malformed line — ignore
     }

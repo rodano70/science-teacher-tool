@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { flushSync } from 'react-dom'
 import { extractStudentsForFeedback } from '../classUtils'
 import { downloadFeedbackDoc } from '../utils/docUtils'
 
@@ -177,9 +176,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
       if (!parsed.isNonCompleter && parsed.total != null && parsed.maxTotal != null) {
         parsed.score = `${parsed.total}/${parsed.maxTotal}`
       }
-      flushSync(() => {
-        setFeedbackData(prev => [...(prev || []), parsed])
-      })
+      setFeedbackData(prev => [...(prev || []), parsed])
     } catch {
       // Incomplete or malformed JSON line — ignore
     }

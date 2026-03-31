@@ -296,7 +296,14 @@ export default function IndividualFeedbackPanel({
         <div style={styles.divider} />
         <div style={styles.statItem}>
           <p style={styles.statLabel}>Feedback Generated</p>
-          <p style={{ ...styles.statValue, color: 'var(--color-primary)' }}>{completers.length}</p>
+          <p style={{ ...styles.statValue, color: 'var(--color-primary)' }}>
+            {completers.length}
+            {feedbackLoading && expectedCompleters > 0 && (
+              <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--color-on-surface-variant)', marginLeft: '2px' }}>
+                {` / ${expectedCompleters}`}
+              </span>
+            )}
+          </p>
         </div>
         <div style={styles.divider} />
         <div style={styles.statItem}>
@@ -421,10 +428,7 @@ export default function IndividualFeedbackPanel({
           <div style={styles.loadingBlock}>
             <span className="ifp-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
             <span style={{ fontSize: '13px', color: 'var(--color-on-surface-variant)' }}>
-              Generating feedback…
-              {students.length > 0
-                ? ` ${students.length} student${students.length !== 1 ? 's' : ''} so far`
-                : ''}
+              {`Generating… ${students.length} of ${expectedCompleters} student${expectedCompleters !== 1 ? 's' : ''}`}
             </span>
           </div>
         )}
