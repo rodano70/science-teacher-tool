@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import UploadPanel from './components/UploadPanel'
 import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
@@ -7,7 +7,7 @@ import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
-function App() {
+function App({ onStepChange }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -29,6 +29,11 @@ function App() {
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
+
+  // Wire stepper: null → step 0, wcf/individual → step 1
+  useEffect(() => {
+    onStepChange?.(activeOutput === null ? 0 : 1)
+  }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 
@@ -118,6 +123,7 @@ function App() {
   }
 
   function onClickGenerateFeedback() {
+    setActiveOutput('individual')
     setWcfData(null)
     setWcfError('')
     handleGenerateFeedback()
@@ -227,22 +233,23 @@ function App() {
             />
           )}
 
-          {activeOutput === 'individual' && feedbackData !== null && (
+          {activeOutput === 'individual' && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
               feedbackLoading={feedbackLoading}
               feedbackSuccess={feedbackSuccess}
-              onDownload={handleDownloadWordDoc}
+              onDownloadSuccess={setFeedbackSuccess}
               onSwitchToWCF={onSwitchToWCF}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
+              questionTexts={questionTexts}
             />
           )}
         </div>
       </main>
 
-      <p style={styles.version}>v0.21</p>
+      <p style={styles.version}>v0.22</p>
     </>
   )
 }

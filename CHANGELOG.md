@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.22 — Individual feedback panel: instant navigation, question pills, click-to-edit, edited Word export
+
+- App.jsx: `setActiveOutput('individual')` moved to top of `onClickGenerateFeedback` so the
+  panel appears immediately on click (before the first streamed card arrives); render
+  condition relaxed to `activeOutput === 'individual'` — panel handles null feedbackData
+  gracefully via `|| []`
+- AppPage.jsx: `activeStep` state added; `handleStepChange` callback passed to App as
+  `onStepChange` and to AppShell as `activeStep`
+- AppShell.jsx: accepts `activeStep` prop (default 0); stepper now highlights the correct
+  step dynamically — step 0 ("1. Upload") when no output, step 1 ("2. Feedback") when
+  either WCF or individual output is active
+- App.jsx: `useEffect` wires `activeOutput` → step index and calls `onStepChange`;
+  `questionTexts` and `onDownloadSuccess` (= `setFeedbackSuccess`) passed to
+  IndividualFeedbackPanel
+- IndividualFeedbackPanel.jsx: imports `useRef` and `downloadFeedbackDoc` directly; adds
+  `editsRef` (useRef) seeded from student API values in a useEffect that runs whenever the
+  students array grows; `onChange` callback passed to each StudentCard writes field edits
+  into editsRef without triggering re-renders; `handleDownload` builds `exportData` from
+  editsRef (normalising camelCase `toImprove` → snake_case `to_improve` for docUtils) and
+  calls `downloadFeedbackDoc` directly; download button wired to `handleDownload`; CSS for
+  `.sc-field-wrapper` / `.sc-field-pencil` hover reveal added to the panel's `<style>` block
+- StudentCard.jsx: now stateful — accepts `questionTexts` and `onChange` props; local
+  `wwwValue` / `ebiValue` / `toImproveValue` state initialised from student props;
+  `isEditingWww` / `isEditingEbi` / `isEditingToImprove` booleans; textarea refs + useEffect
+  auto-resize; click wrapper uses `.sc-field-wrapper` class; pencil icon uses `.sc-field-pencil`;
+  onBlur commits edit via `onChange` callback; Escape key blurs the active textarea
+- StudentCard.jsx — pill strip: renders below the score badge in the left column when
+  `questionTexts` is a non-empty array; 18 × 18 px pills in a flex-wrap row (gap 3px);
+  correct = `var(--color-primary-container)`, incorrect = `rgba(254,137,131,0.5)`; hover
+  triggers a popover (position absolute, bottom calc(100% + 6px), z-index 100) showing
+  question number + correct/incorrect label + full question text; non-completer cards
+  unaffected
+
 ## v0.21 — Individual Feedback streaming and Academic Curator restyle
 
 - useIndividualFeedback.js: switched from single awaited response to SSE streaming

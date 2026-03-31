@@ -1,4 +1,19 @@
-export default function StudentCard({ student, threshold, maxTotal }) {
+import { useState, useRef, useEffect } from 'react'
+
+function parseBreakdown(breakdown) {
+  if (!breakdown) return {}
+  const result = {}
+  breakdown.split(', ').forEach(part => {
+    const colonIdx = part.indexOf(':')
+    if (colonIdx === -1) return
+    const key = part.slice(0, colonIdx).trim()
+    const val = part.slice(colonIdx + 1).trim()
+    result[key] = parseInt(val, 10)
+  })
+  return result
+}
+
+export default function StudentCard({ student, threshold, maxTotal, questionTexts, onChange }) {
   const isNonCompleter = student.isNonCompleter || (!student.ebi && !student.to_improve)
 
   const effectiveMaxTotal = maxTotal ?? student.maxTotal ?? 1
@@ -11,6 +26,74 @@ export default function StudentCard({ student, threshold, maxTotal }) {
   const scoreLabel = student.total != null && effectiveMaxTotal > 1
     ? `${student.total} / ${effectiveMaxTotal}`
     : (student.score && student.score !== 'Did not submit' ? student.score : null)
+
+  // Local editable state — initialised once from student props
+  const [wwwValue, setWwwValue] = useState(() => student.www ?? '')
+  const [ebiValue, setEbiValue] = useState(() => student.ebi ?? '')
+  const [toImproveValue, setToImproveValue] = useState(() => student.to_improve ?? '')
+
+  // Editing booleans
+  const [isEditingWww, setIsEditingWww] = useState(false)
+  const [isEditingEbi, setIsEditingEbi] = useState(false)
+  const [isEditingToImprove, setIsEditingToImprove] = useState(false)
+
+  // Pill strip hover
+  const [hoveredPillIndex, setHoveredPillIndex] = useState(null)
+
+  // Textarea refs
+  const wwwRef = useRef(null)
+  const ebiRef = useRef(null)
+  const toImproveRef = useRef(null)
+
+  // Focus + initial resize when editing starts
+  useEffect(() => {
+    if (isEditingWww && wwwRef.current) {
+      wwwRef.current.focus()
+      wwwRef.current.style.height = 'auto'
+      wwwRef.current.style.height = wwwRef.current.scrollHeight + 'px'
+    }
+  }, [isEditingWww])
+
+  useEffect(() => {
+    if (isEditingEbi && ebiRef.current) {
+      ebiRef.current.focus()
+      ebiRef.current.style.height = 'auto'
+      ebiRef.current.style.height = ebiRef.current.scrollHeight + 'px'
+    }
+  }, [isEditingEbi])
+
+  useEffect(() => {
+    if (isEditingToImprove && toImproveRef.current) {
+      toImproveRef.current.focus()
+      toImproveRef.current.style.height = 'auto'
+      toImproveRef.current.style.height = toImproveRef.current.scrollHeight + 'px'
+    }
+  }, [isEditingToImprove])
+
+  // Auto-resize textarea on value change
+  useEffect(() => {
+    if (wwwRef.current) {
+      wwwRef.current.style.height = 'auto'
+      wwwRef.current.style.height = wwwRef.current.scrollHeight + 'px'
+    }
+  }, [wwwValue])
+
+  useEffect(() => {
+    if (ebiRef.current) {
+      ebiRef.current.style.height = 'auto'
+      ebiRef.current.style.height = ebiRef.current.scrollHeight + 'px'
+    }
+  }, [ebiValue])
+
+  useEffect(() => {
+    if (toImproveRef.current) {
+      toImproveRef.current.style.height = 'auto'
+      toImproveRef.current.style.height = toImproveRef.current.scrollHeight + 'px'
+    }
+  }, [toImproveValue])
+
+  const parsedBreakdown = !isNonCompleter ? parseBreakdown(student.breakdown) : {}
+  const showPillStrip = !isNonCompleter && Array.isArray(questionTexts) && questionTexts.length > 0
 
   if (isNonCompleter) {
     return (
@@ -40,23 +123,119 @@ export default function StudentCard({ student, threshold, maxTotal }) {
         {needsReview && (
           <span style={styles.needsReviewTag}>Needs Review</span>
         )}
+
+        {/* Question pill strip */}
+        {showPillStrip && (
+          <div style={pillStyles.strip}>
+            {questionTexts.map((qText, i) => {
+              const score = parsedBreakdown[`Q${i + 1}`]
+              const isCorrect = score > 0
+              return (
+                <div
+                  key={i}
+                  style={{
+                    ...pillStyles.pill,
+                    background: isCorrect
+                      ? 'var(--color-primary-container)'
+                      : 'rgba(254,137,131,0.5)',
+                  }}
+                  onMouseEnter={() => setHoveredPillIndex(i)}
+                  onMouseLeave={() => setHoveredPillIndex(null)}
+                >
+                  {hoveredPillIndex === i && (
+                    <div style={pillStyles.popover}>
+                      <div style={pillStyles.popoverHeader}>
+                        <span style={pillStyles.popoverQuestion}>Q{i + 1}</span>
+                        <span style={{
+                          ...pillStyles.popoverStatus,
+                          color: isCorrect ? 'var(--color-primary)' : 'var(--color-error)',
+                        }}>
+                          {isCorrect ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                      <p style={pillStyles.popoverBody}>{qText}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Right column — three-column grid */}
       <div style={styles.right}>
         <div style={styles.grid}>
+
+          {/* WWW */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-primary)' }}>WWW</span>
-            <p style={styles.sectionText}>{student.www ?? ''}</p>
+            <div
+              className="sc-field-wrapper"
+              onClick={() => !isEditingWww && setIsEditingWww(true)}
+            >
+              <span className="material-symbols-outlined sc-field-pencil">edit</span>
+              {isEditingWww ? (
+                <textarea
+                  ref={wwwRef}
+                  value={wwwValue}
+                  onChange={e => setWwwValue(e.target.value)}
+                  onBlur={() => { setIsEditingWww(false); onChange?.('www', wwwValue) }}
+                  onKeyDown={e => { if (e.key === 'Escape') wwwRef.current?.blur() }}
+                  style={editStyles.textarea}
+                />
+              ) : (
+                <p style={styles.sectionText}>{wwwValue}</p>
+              )}
+            </div>
           </div>
+
+          {/* EBI */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-on-surface-variant)' }}>EBI</span>
-            <p style={styles.sectionText}>{student.ebi ?? ''}</p>
+            <div
+              className="sc-field-wrapper"
+              onClick={() => !isEditingEbi && setIsEditingEbi(true)}
+            >
+              <span className="material-symbols-outlined sc-field-pencil">edit</span>
+              {isEditingEbi ? (
+                <textarea
+                  ref={ebiRef}
+                  value={ebiValue}
+                  onChange={e => setEbiValue(e.target.value)}
+                  onBlur={() => { setIsEditingEbi(false); onChange?.('ebi', ebiValue) }}
+                  onKeyDown={e => { if (e.key === 'Escape') ebiRef.current?.blur() }}
+                  style={editStyles.textarea}
+                />
+              ) : (
+                <p style={styles.sectionText}>{ebiValue}</p>
+              )}
+            </div>
           </div>
+
+          {/* To Improve */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-on-tertiary-container)' }}>To Improve</span>
-            <p style={styles.sectionText}>{student.to_improve ?? ''}</p>
+            <div
+              className="sc-field-wrapper"
+              onClick={() => !isEditingToImprove && setIsEditingToImprove(true)}
+            >
+              <span className="material-symbols-outlined sc-field-pencil">edit</span>
+              {isEditingToImprove ? (
+                <textarea
+                  ref={toImproveRef}
+                  value={toImproveValue}
+                  onChange={e => setToImproveValue(e.target.value)}
+                  onBlur={() => { setIsEditingToImprove(false); onChange?.('toImprove', toImproveValue) }}
+                  onKeyDown={e => { if (e.key === 'Escape') toImproveRef.current?.blur() }}
+                  style={editStyles.textarea}
+                />
+              ) : (
+                <p style={styles.sectionText}>{toImproveValue}</p>
+              )}
+            </div>
           </div>
+
         </div>
       </div>
     </article>
@@ -127,6 +306,76 @@ const styles = {
     fontSize: '13px',
     lineHeight: '1.6',
     color: 'var(--color-on-surface)',
+  },
+}
+
+const pillStyles = {
+  strip: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '3px',
+    marginTop: '10px',
+  },
+  pill: {
+    position: 'relative',
+    width: '18px',
+    height: '18px',
+    borderRadius: '4px',
+    flexShrink: 0,
+    cursor: 'default',
+  },
+  popover: {
+    position: 'absolute',
+    bottom: 'calc(100% + 6px)',
+    left: 0,
+    zIndex: 100,
+    background: 'var(--color-surface-container-lowest)',
+    boxShadow: '0 4px 16px rgba(8,50,97,0.12)',
+    borderRadius: '0.5rem',
+    padding: '0.75rem 1rem',
+    maxWidth: '320px',
+    minWidth: '180px',
+    pointerEvents: 'none',
+  },
+  popoverHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '6px',
+  },
+  popoverQuestion: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+  },
+  popoverStatus: {
+    fontSize: '11px',
+    fontWeight: '600',
+  },
+  popoverBody: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: 1.5,
+    color: 'var(--color-on-surface-variant)',
+  },
+}
+
+const editStyles = {
+  textarea: {
+    fontFamily: 'inherit',
+    fontSize: '13px',
+    lineHeight: '1.6',
+    padding: '0',
+    border: 'none',
+    outline: 'none',
+    background: 'var(--color-surface-container-low)',
+    borderRadius: '4px',
+    width: '100%',
+    resize: 'none',
+    color: 'inherit',
+    overflowY: 'hidden',
   },
 }
 

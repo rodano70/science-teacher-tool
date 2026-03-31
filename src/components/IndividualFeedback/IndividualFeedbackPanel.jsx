@@ -1,18 +1,24 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import StudentCard from './StudentCard'
+import { downloadFeedbackDoc } from '../../utils/docUtils'
 
 export default function IndividualFeedbackPanel({
   feedbackData,
   feedbackLoading,
   feedbackSuccess,
-  onDownload,
+  onDownloadSuccess,
   onSwitchToWCF,
   examBoard,
   subject,
   topic,
+  questionTexts,
 }) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [threshold, setThreshold] = useState(60)
+
+  // editsRef holds the latest text for every completer, keyed by student name.
+  // Writing here does not trigger re-renders; read synchronously on download.
+  const editsRef = useRef({})
 
   const students = feedbackData || []
   const completers = students.filter(s => !s.isNonCompleter)
@@ -24,6 +30,19 @@ export default function IndividualFeedbackPanel({
     const avgTotal = completers.reduce((sum, s) => sum + (s.total ?? 0), 0) / completers.length
     return { classAvg: avgTotal, maxTotal }
   }, [completers])
+
+  // Seed editsRef with original API values whenever students array grows
+  useEffect(() => {
+    students.forEach(s => {
+      if (!s.isNonCompleter && !editsRef.current[s.name]) {
+        editsRef.current[s.name] = {
+          www: s.www,
+          ebi: s.ebi,
+          toImprove: s.to_improve,
+        }
+      }
+    })
+  }, [students])
 
   // Auto-set threshold to class average once streaming completes
   useEffect(() => {
@@ -42,6 +61,20 @@ export default function IndividualFeedbackPanel({
     }
     return students
   }, [students, activeFilter, threshold, classStats, completers, nonCompleters])
+
+  async function handleDownload() {
+    const exportData = students.map(s =>
+      s.isNonCompleter
+        ? s
+        : {
+            ...s,
+            www: editsRef.current[s.name]?.www ?? s.www,
+            ebi: editsRef.current[s.name]?.ebi ?? s.ebi,
+            to_improve: editsRef.current[s.name]?.toImprove ?? s.to_improve,
+          }
+    )
+    await downloadFeedbackDoc({ feedbackData: exportData, subject, topic, setFeedbackSuccess: onDownloadSuccess })
+  }
 
   const eyebrow = [examBoard, subject, topic].filter(Boolean).join(' • ').toUpperCase()
   const classAvgPct = classStats.maxTotal > 0
@@ -93,6 +126,9 @@ export default function IndividualFeedbackPanel({
           flex-shrink: 0;
         }
         @keyframes ifp-spin { to { transform: rotate(360deg); } }
+        .sc-field-wrapper { position: relative; cursor: pointer; }
+        .sc-field-pencil { position: absolute; top: 0; right: 0; font-size: 15px !important; color: var(--color-on-surface-variant); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+        .sc-field-wrapper:hover .sc-field-pencil { opacity: 1; }
       `}</style>
 
       {/* Header row */}
@@ -108,7 +144,7 @@ export default function IndividualFeedbackPanel({
               Whole Class Feedback
             </button>
           )}
-          <button className="ifp-dl-btn btn-download" onClick={onDownload} type="button">
+          <button className="ifp-dl-btn btn-download" onClick={handleDownload} type="button">
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
             Download Word Document
           </button>
@@ -193,6 +229,13 @@ export default function IndividualFeedbackPanel({
             student={student}
             threshold={threshold}
             maxTotal={classStats.maxTotal}
+            questionTexts={questionTexts}
+            onChange={(field, value) => {
+              editsRef.current[student.name] = {
+                ...editsRef.current[student.name],
+                [field]: value,
+              }
+            }}
           />
         ))}
 
