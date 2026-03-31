@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.23e — Sticky menu, compact layout, hero text, Dashboard stub, streaming fix
+
+### Layout & Navigation
+- **Sticky header**: top bar and stepper are now wrapped in a single `position: sticky`
+  container so the 4-step navigation never scrolls out of view.
+- **Compact layout for laptop screens**: sidebar narrowed 256px → 220px, top bar height
+  56px → 48px, hero font 44px → 34px, horizontal padding 48px → 32px throughout all panels
+  and the Upload page.
+- **4. Dashboard enabled**: step 4 is now clickable; navigates to a "Coming soon" stub
+  panel with a back-to-Upload button. The `disabled` flag and tooltip have been removed
+  from the stepper.
+
+### Hero text
+- **Single-line hero titles** across all panels: the `<br />` break in every
+  `<h1 style={heroTitle}>` was replaced with a mid-dot separator (` · `) so the
+  title fits on one line, saving vertical space while preserving the two-tone colour
+  treatment (dark main text + primary-colour accent, mid-dot in outline colour).
+  Affected panels: Upload & Configure, Whole Class Feedback Sheet, Individual Student
+  Feedback Review, and the new Dashboard stub.
+- **WCF empty state now shows hero**: when navigating to step 2 before generating
+  feedback the full hero block (eyebrow + h1 + context line) is shown above the
+  "No class feedback yet" card, consistent with the loading and loaded states.
+
+### Streaming fixes
+- **Whole Class Feedback — progressive streaming**: `useClassFeedback` now calls the
+  Anthropic API with `stream: true` and asks Claude to output each section as a separate
+  NDJSON line (`{"section":"key_successes","data":[...]}`). As each line arrives it is
+  parsed and merged into `wcfData` via `flushSync`, so feedback sections appear one by one
+  rather than all at once after the full response.  A pulsing "Generating…" pill replaces
+  the Download / Switch buttons in the action bar while streaming is in progress; both
+  buttons are restored when the stream ends.
+- **Individual Feedback — per-student render**: `useIndividualFeedback` now wraps each
+  `setFeedbackData` call inside `flushSync`, guaranteeing a synchronous React render after
+  each student is parsed from the stream. Previously React's automatic batching could defer
+  all updates until the stream ended, making the page appear blank until generation
+  completed.
+
+### General
+- Version bumped to v0.23e in `App.jsx` and `LandingPage.jsx`.
+
 ## v0.23d — WCF loading state, IFP empty-state fix, token limit fix, back-button CSS
 
 ### Section 2 – Whole Class Feedback

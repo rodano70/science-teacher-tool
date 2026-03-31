@@ -1,6 +1,6 @@
 /* AppShell.jsx — pure layout shell, no imports of hooks or app state */
 
-const SIDEBAR_WIDTH = 256
+const SIDEBAR_WIDTH = 220
 
 export default function AppShell({ children, onReset, activeStep = 0, onStepClick }) {
   return (
@@ -65,50 +65,52 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
       {/* ── Main column (right of sidebar) ──────────────────────────────── */}
       <div style={styles.mainColumn}>
 
-        {/* Top bar */}
-        <header style={styles.topBar}>
-          <div style={styles.topBarLeft}>
-            <span style={styles.topBarWordmark}>TeacherDesk</span>
-            <span style={styles.topBarTool}>Science Feedback Tool</span>
-          </div>
-          <div style={styles.topBarRight}>
-            <button style={styles.resetBtn} onClick={onReset}>Reset Session</button>
-            <button style={styles.iconBtn} title="Settings" aria-label="Settings">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </button>
-            <div style={styles.avatar}>
-              <span className="material-symbols-outlined" style={styles.avatarIcon}>account_circle</span>
-            </div>
-          </div>
-        </header>
+        {/* Sticky header: top bar + stepper */}
+        <div style={styles.stickyHeader}>
 
-        {/* Stepper */}
-        <div style={styles.stepperBar}>
-          {steps.map((step, i) => {
-            const isActive = i === activeStep
-            const isDisabled = step.disabled
-            return (
-              <div
-                key={i}
-                style={{
-                  ...styles.stepItem,
-                  cursor: isDisabled ? 'default' : 'pointer',
-                  opacity: isDisabled ? 0.4 : 1,
-                }}
-                onClick={() => !isDisabled && onStepClick?.(i)}
-                title={isDisabled ? 'Coming soon' : undefined}
-              >
-                <span style={isActive ? styles.stepLabelActive : styles.stepLabelInactive}>
-                  {step.label}
-                </span>
-                {isActive && <div style={styles.stepUnderline} />}
+          {/* Top bar */}
+          <header style={styles.topBar}>
+            <div style={styles.topBarLeft}>
+              <span style={styles.topBarWordmark}>TeacherDesk</span>
+              <span style={styles.topBarTool}>Science Feedback Tool</span>
+            </div>
+            <div style={styles.topBarRight}>
+              <button style={styles.resetBtn} onClick={onReset}>Reset Session</button>
+              <button style={styles.iconBtn} title="Settings" aria-label="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+              <div style={styles.avatar}>
+                <span className="material-symbols-outlined" style={styles.avatarIcon}>account_circle</span>
               </div>
-            )
-          })}
-        </div>
+            </div>
+          </header>
+
+          {/* Stepper */}
+          <div style={styles.stepperBar}>
+            {steps.map((step, i) => {
+              const isActive = i === activeStep
+              return (
+                <div
+                  key={i}
+                  style={{
+                    ...styles.stepItem,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => onStepClick?.(i)}
+                >
+                  <span style={isActive ? styles.stepLabelActive : styles.stepLabelInactive}>
+                    {step.label}
+                  </span>
+                  {isActive && <div style={styles.stepUnderline} />}
+                </div>
+              )
+            })}
+          </div>
+
+        </div>{/* /stickyHeader */}
 
         {/* Content — no padding; each panel manages its own */}
         <div style={styles.content}>
@@ -121,10 +123,10 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
 }
 
 const steps = [
-  { label: '1. Upload', disabled: false },
-  { label: '2. Whole Class Feedback', disabled: false },
-  { label: '3. Individual Feedback', disabled: false },
-  { label: '4. Dashboard', disabled: true },
+  { label: '1. Upload' },
+  { label: '2. Whole Class Feedback' },
+  { label: '3. Individual Feedback' },
+  { label: '4. Dashboard' },
 ]
 
 /* ── Styles ─────────────────────────────────────────────────────────────── */
@@ -152,8 +154,8 @@ const styles = {
     zIndex: 40,
   },
   sidebarWordmark: {
-    padding: '20px 20px 16px',
-    fontSize: '17px',
+    padding: '16px 16px 12px',
+    fontSize: '16px',
     fontWeight: '900',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
@@ -161,10 +163,10 @@ const styles = {
     marginBottom: '8px',
   },
   navSection: {
-    padding: '0 8px',
+    padding: '0 6px',
   },
   navSectionLabel: {
-    margin: '12px 12px 4px',
+    margin: '10px 10px 3px',
     fontSize: '10px',
     fontWeight: '600',
     letterSpacing: '1.5px',
@@ -174,8 +176,8 @@ const styles = {
   navItemActive: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '9px 12px',
+    gap: '8px',
+    padding: '7px 10px',
     borderRadius: '8px',
     backgroundColor: 'var(--color-surface-container-highest)',
     cursor: 'pointer',
@@ -184,8 +186,8 @@ const styles = {
   navItemInactive: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '9px 12px',
+    gap: '8px',
+    padding: '7px 10px',
     borderRadius: '8px',
     cursor: 'pointer',
     marginBottom: '2px',
@@ -193,26 +195,20 @@ const styles = {
   navItemDisabled: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    padding: '9px 12px',
+    gap: '8px',
+    padding: '7px 10px',
     borderRadius: '8px',
     cursor: 'default',
     opacity: 0.45,
     marginBottom: '2px',
   },
-  navItemIcon: {
-    fontSize: '15px',
-    flexShrink: 0,
-    width: '20px',
-    textAlign: 'center',
-  },
   navItemIconMs: {
-    fontSize: '20px',
+    fontSize: '18px',
     flexShrink: 0,
     color: 'var(--color-on-surface)',
   },
   navSectionSubLabel: {
-    margin: '0 12px 6px',
+    margin: '0 10px 5px',
     fontSize: '9px',
     fontWeight: '500',
     letterSpacing: '0.05em',
@@ -221,7 +217,7 @@ const styles = {
   },
   navItemLabel: {
     flex: 1,
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '500',
     color: 'var(--color-on-surface)',
   },
@@ -236,7 +232,7 @@ const styles = {
   },
   sidebarFooter: {
     marginTop: 'auto',
-    padding: '16px 20px 0',
+    padding: '12px 16px 0',
   },
   helpLink: {
     display: 'flex',
@@ -248,7 +244,7 @@ const styles = {
     opacity: 0.7,
   },
   helpIcon: {
-    fontSize: '18px',
+    fontSize: '16px',
   },
 
   /* Main column */
@@ -260,43 +256,48 @@ const styles = {
     minHeight: '100vh',
   },
 
-  /* Top bar */
-  topBar: {
+  /* Sticky header wrapper — top bar + stepper scroll together */
+  stickyHeader: {
     position: 'sticky',
     top: 0,
     zIndex: 30,
     backgroundColor: 'var(--color-surface-container-low)',
+    flexShrink: 0,
+  },
+
+  /* Top bar */
+  topBar: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 28px',
-    height: '56px',
-    flexShrink: 0,
+    padding: '0 24px',
+    height: '48px',
+    borderBottom: '1px solid rgba(147, 179, 233, 0.12)',
   },
   topBarLeft: {
     display: 'flex',
     alignItems: 'baseline',
-    gap: '10px',
+    gap: '8px',
   },
   topBarWordmark: {
-    fontSize: '15px',
+    fontSize: '14px',
     fontWeight: '800',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
   },
   topBarTool: {
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '400',
     color: 'var(--color-on-surface-variant)',
   },
   topBarRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
   },
   resetBtn: {
-    padding: '6px 14px',
-    fontSize: '12px',
+    padding: '5px 12px',
+    fontSize: '11px',
     fontWeight: '500',
     color: 'var(--color-on-surface-variant)',
     backgroundColor: 'transparent',
@@ -308,8 +309,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '32px',
-    height: '32px',
+    width: '28px',
+    height: '28px',
     color: 'var(--color-on-surface-variant)',
     backgroundColor: 'transparent',
     border: 'none',
@@ -324,7 +325,7 @@ const styles = {
     cursor: 'pointer',
   },
   avatarIcon: {
-    fontSize: '30px',
+    fontSize: '26px',
     color: 'var(--color-on-surface)',
   },
 
@@ -332,39 +333,37 @@ const styles = {
   stepperBar: {
     display: 'flex',
     gap: '0',
-    padding: '0 28px',
-    backgroundColor: 'var(--color-surface-container-low)',
+    padding: '0 24px',
     borderBottom: '1px solid var(--color-surface-container)',
-    flexShrink: 0,
   },
   stepItem: {
     position: 'relative',
-    padding: '12px 20px 0',
-    marginRight: '4px',
+    padding: '9px 16px 0',
+    marginRight: '2px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     paddingBottom: '0',
   },
   stepLabelActive: {
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '600',
     color: 'var(--color-primary)',
-    paddingBottom: '10px',
+    paddingBottom: '8px',
     whiteSpace: 'nowrap',
   },
   stepLabelInactive: {
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '400',
     color: 'var(--color-on-surface-variant)',
-    paddingBottom: '10px',
+    paddingBottom: '8px',
     whiteSpace: 'nowrap',
   },
   stepUnderline: {
     position: 'absolute',
     bottom: 0,
-    left: '20px',
-    right: '20px',
+    left: '16px',
+    right: '16px',
     height: '2px',
     backgroundColor: 'var(--color-primary)',
     borderRadius: '2px 2px 0 0',

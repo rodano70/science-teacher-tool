@@ -366,7 +366,7 @@ export default function ClassFeedbackPanel({
           <span style={styles.heroEyebrow}>Assessment Intelligence</span>
           <h1 style={styles.heroTitle}>
             Whole Class{' '}
-            <br />
+            <span style={styles.heroDot}>·</span>{' '}
             <span style={styles.heroAccent}>Feedback Sheet</span>
           </h1>
           {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
@@ -392,21 +392,34 @@ export default function ClassFeedbackPanel({
   // ── Empty state ──────────────────────────────────────────────────────────
   if (!data) {
     return (
-      <div style={styles.emptyWrapper}>
+      <div style={styles.wrapper}>
         <style>{sharedCss}</style>
-        <div style={styles.emptyCard}>
-          <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
-          <h2 style={styles.emptyTitle}>No class feedback yet</h2>
-          <p style={styles.emptyDesc}>
-            Go to the Upload section, upload your marksheet and fill in the exam details, then click{' '}
-            <strong>Generate Whole Class Feedback</strong>.
-          </p>
+        <div style={styles.hero} className="no-print">
+          <span style={styles.heroEyebrow}>Assessment Intelligence</span>
+          <h1 style={styles.heroTitle}>
+            Whole Class{' '}
+            <span style={styles.heroDot}>·</span>{' '}
+            <span style={styles.heroAccent}>Feedback Sheet</span>
+          </h1>
+          {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
+        </div>
+        <div style={styles.actionBar} className="no-print">
           {onBack && (
             <button className="cfp-back-btn" onClick={onBack} type="button">
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
               Back to Setup
             </button>
           )}
+        </div>
+        <div style={styles.emptyInner}>
+          <div style={styles.emptyCard}>
+            <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
+            <h2 style={styles.emptyTitle}>No class feedback yet</h2>
+            <p style={styles.emptyDesc}>
+              Go to the Upload section, upload your marksheet and fill in the exam details, then click{' '}
+              <strong>Generate Whole Class Feedback</strong>.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -447,6 +460,7 @@ export default function ClassFeedbackPanel({
         .cfp-back-btn:hover { background: var(--color-surface-container-high); }
         .wcf-editable:hover { background-color: rgba(147,179,233,0.12); }
         .wcf-editable:hover .wcf-pencil { opacity: 0.5; }
+        @keyframes wcf-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
       {/* ── Print-only header ─────────────────────────────────────────────── */}
@@ -465,7 +479,7 @@ export default function ClassFeedbackPanel({
         <span style={styles.heroEyebrow}>Assessment Intelligence</span>
         <h1 style={styles.heroTitle}>
           Whole Class{' '}
-          <br />
+          <span style={styles.heroDot}>·</span>{' '}
           <span style={styles.heroAccent}>Feedback Sheet</span>
         </h1>
         {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
@@ -480,16 +494,24 @@ export default function ClassFeedbackPanel({
           </button>
         )}
         <div style={styles.headerButtons}>
-          {onSwitchToIndividual && (
+          {wcfLoading && (
+            <span style={styles.streamingPill}>
+              <span style={styles.streamingDot} />
+              Generating…
+            </span>
+          )}
+          {onSwitchToIndividual && !wcfLoading && (
             <button className="cfp-switch-btn" onClick={onSwitchToIndividual} type="button">
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>person</span>
               Individual Student Feedback
             </button>
           )}
-          <button className="cfp-dl-btn" onClick={handleDownload} type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
-            Download Word Document
-          </button>
+          {!wcfLoading && (
+            <button className="cfp-dl-btn" onClick={handleDownload} type="button">
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
+              Download Word Document
+            </button>
+          )}
           {downloadSuccess && (
             <span style={styles.successNote}>Downloaded ✓</span>
           )}
@@ -636,7 +658,7 @@ export default function ClassFeedbackPanel({
 const styles = {
   /* ── Loading state ───────────────────────────────────────────────────── */
   loadingCard: {
-    margin: '0 48px',
+    margin: '0 32px',
     padding: '32px 40px',
     background: 'var(--color-surface-container-low)',
     borderRadius: '16px',
@@ -667,6 +689,11 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'flex-start',
     minHeight: '400px',
+  },
+  emptyInner: {
+    padding: '0 32px 48px',
+    display: 'flex',
+    justifyContent: 'center',
   },
   emptyCard: {
     display: 'flex',
@@ -699,13 +726,13 @@ const styles = {
 
   /* ── Wrapper ─────────────────────────────────────────────────────────── */
   wrapper: {
-    paddingTop: '40px',
+    paddingTop: '28px',
   },
 
   /* ── Hero (screen only) ──────────────────────────────────────────────── */
   hero: {
-    padding: '0 48px',
-    marginBottom: '32px',
+    padding: '0 32px',
+    marginBottom: '20px',
   },
   heroEyebrow: {
     display: 'block',
@@ -714,21 +741,25 @@ const styles = {
     color: 'var(--color-outline)',
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
-    marginBottom: '10px',
+    marginBottom: '8px',
   },
   heroTitle: {
-    margin: '0 0 10px',
-    fontSize: '44px',
+    margin: '0 0 8px',
+    fontSize: '34px',
     fontWeight: '800',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
-    lineHeight: '1.1',
+    lineHeight: '1.2',
+  },
+  heroDot: {
+    color: 'var(--color-outline)',
+    fontWeight: '400',
   },
   heroAccent: {
     color: 'var(--color-primary)',
   },
   heroContext: {
-    margin: '10px 0 0',
+    margin: '8px 0 0',
     fontSize: '12px',
     fontWeight: '700',
     letterSpacing: '0.08em',
@@ -743,8 +774,8 @@ const styles = {
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '12px',
-    marginBottom: '24px',
-    padding: '0 48px',
+    marginBottom: '20px',
+    padding: '0 32px',
   },
   headerButtons: {
     display: 'flex',
@@ -756,6 +787,24 @@ const styles = {
     fontSize: '13px',
     color: 'var(--color-primary)',
     fontWeight: '500',
+  },
+  streamingPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    background: 'var(--color-surface-container)',
+    border: '1px solid rgba(147, 179, 233, 0.3)',
+    borderRadius: '999px',
+    fontSize: '12px',
+    color: 'var(--color-on-surface-variant)',
+  },
+  streamingDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--color-primary)',
+    animation: 'wcf-pulse 1.2s ease-in-out infinite',
   },
 
   /* ── Print-only header ───────────────────────────────────────────────── */
@@ -781,9 +830,9 @@ const styles = {
     borderRadius: '8px',
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    marginLeft: '48px',
-    marginRight: '48px',
-    marginBottom: '48px',
+    marginLeft: '32px',
+    marginRight: '32px',
+    marginBottom: '40px',
   },
 
   /* ── Zone 1: Context header ──────────────────────────────────────────── */

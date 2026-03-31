@@ -162,7 +162,7 @@ export default function IndividualFeedbackPanel({
           <span style={styles.heroEyebrow}>Assessment Intelligence</span>
           <h1 style={styles.heroTitle}>
             Individual Student{' '}
-            <br />
+            <span style={styles.heroDot}>·</span>{' '}
             <span style={styles.heroAccent}>Feedback Review</span>
           </h1>
         </div>
@@ -259,7 +259,7 @@ export default function IndividualFeedbackPanel({
         <span style={styles.heroEyebrow}>Assessment Intelligence</span>
         <h1 style={styles.heroTitle}>
           Individual Student{' '}
-          <br />
+          <span style={styles.heroDot}>·</span>{' '}
           <span style={styles.heroAccent}>Feedback Review</span>
         </h1>
         {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
@@ -435,12 +435,12 @@ export default function IndividualFeedbackPanel({
 
 const styles = {
   wrapper: {
-    paddingTop: '40px',
+    paddingTop: '28px',
   },
   // Hero title
   hero: {
-    padding: '0 48px',
-    marginBottom: '32px',
+    padding: '0 32px',
+    marginBottom: '24px',
   },
   heroEyebrow: {
     display: 'block',
@@ -449,15 +449,19 @@ const styles = {
     color: 'var(--color-outline)',
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
-    marginBottom: '10px',
+    marginBottom: '8px',
   },
   heroTitle: {
-    margin: '0 0 10px',
-    fontSize: '44px',
+    margin: '0 0 8px',
+    fontSize: '34px',
     fontWeight: '800',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
-    lineHeight: '1.1',
+    lineHeight: '1.2',
+  },
+  heroDot: {
+    color: 'var(--color-outline)',
+    fontWeight: '400',
   },
   heroAccent: {
     color: 'var(--color-primary)',
@@ -512,7 +516,7 @@ const styles = {
     flexWrap: 'wrap',
     gap: '12px',
     marginBottom: '24px',
-    padding: '0 48px',
+    padding: '0 32px',
   },
   headerButtons: {
     display: 'flex',
@@ -528,8 +532,8 @@ const styles = {
     borderRadius: '12px',
     padding: '24px',
     marginBottom: '20px',
-    marginLeft: '48px',
-    marginRight: '48px',
+    marginLeft: '32px',
+    marginRight: '32px',
     flexWrap: 'wrap',
   },
   statItem: { flexShrink: 0 },
@@ -547,7 +551,7 @@ const styles = {
     background: 'var(--color-surface-container)',
     border: '1px solid rgba(147, 179, 233, 0.3)', borderRadius: '999px',
   },
-  filterBar: { padding: '0 48px', marginBottom: '24px' },
+  filterBar: { padding: '0 32px', marginBottom: '24px' },
   filterPills: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   thresholdInner: { display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '12px' },
   thresholdLabel: { fontSize: '13px', color: 'var(--color-on-surface)', whiteSpace: 'nowrap' },
@@ -555,7 +559,7 @@ const styles = {
   rangeInput: { flexShrink: 0, width: '160px', accentColor: 'var(--color-primary)', cursor: 'pointer' },
   truncationWarning: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    margin: '0 48px 16px',
+    margin: '0 32px 16px',
     padding: '12px 16px',
     backgroundColor: '#fffbeb',
     border: '1px solid #fcd34d',
@@ -564,7 +568,7 @@ const styles = {
     color: '#92400e',
     lineHeight: '1.5',
   },
-  cardList: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 48px 48px' },
+  cardList: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 32px 40px' },
   loadingBlock: {
     display: 'flex', alignItems: 'center', gap: '10px',
     padding: '16px 20px',
