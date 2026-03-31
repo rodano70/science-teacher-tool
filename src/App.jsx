@@ -260,7 +260,7 @@ function App({ onStepChange }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.22</p>
+      <p style={styles.version}>v0.22e</p>
     </>
   )
 }

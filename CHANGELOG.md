@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.22e — Bug fixes: panel navigation, pill colours, student counts
+
+- App.jsx: added `outputRef` on the output section div and a `useEffect` that calls
+  `scrollIntoView({ behavior: 'smooth', block: 'start' })` when `activeOutput` becomes
+  non-null, so clicking Generate brings the feedback panel into view immediately
+- IndividualFeedbackPanel.jsx: the Anthropic API response does not echo back the
+  `breakdown` string; added `extractStudentsForFeedback(studentData)` call to build a
+  `name → breakdown` map from the original Excel data; breakdown merged into each student
+  object before passing to StudentCard so pills now correctly colour correct vs incorrect
+- IndividualFeedbackPanel.jsx: "Total Students" and "No Submission" stats now derived from
+  the classUtils-parsed `rawStudents` array (accurate Excel headcount) rather than
+  `feedbackData.length`, which undercounts when API JSON lines fail to parse near the
+  token limit; "Feedback Generated" still shows the live streamed count
+
 ## v0.22 — Individual feedback panel: instant navigation, question pills, click-to-edit, edited Word export
 
 - App.jsx: `setActiveOutput('individual')` moved to top of `onClickGenerateFeedback` so the
