@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.23c — Stepper navigation restored and extended to 4 steps
+
+- AppShell.jsx: stepper updated from 3 steps (`1. Upload / 2. Feedback / 3. Dashboard`)
+  to 4 steps (`1. Upload / 2. Whole Class Feedback / 3. Individual Feedback / 4. Dashboard`).
+  Step items are now clickable — each triggers `onStepClick(index)` passed as a prop.
+  Step 4 (Dashboard) is disabled (opacity 0.4, no pointer, "Coming soon" tooltip) until
+  implemented.
+- AppPage.jsx: `navigateRef` stores the navigate function exposed by App; `handleStepClick`
+  relays stepper clicks to it. `onRegisterNavigate` prop passed to App.
+- App.jsx: `onRegisterNavigate` prop registers a `(stepIndex) → setActiveOutput` function
+  with AppPage after each mount; `onStepChange` now maps `activeOutput` to 4-step indices
+  (null→0, 'wcf'→1, 'individual'→2). Navigation works correctly whether or not data has
+  been loaded: clicking step 2 or 3 without data shows the respective empty state, with a
+  "← Back to Setup" button.
+- LandingPage.jsx: version updated from v0.20 to v0.23c.
+- App.jsx: version label updated to v0.23c.
+
 ## v0.23b — WCF editable text + download, navigation fixes, missing students, layout polish
 
 ### Section 3 – Individual Student Feedback
