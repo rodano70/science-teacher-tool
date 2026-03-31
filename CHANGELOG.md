@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.21 — Individual Feedback streaming and Academic Curator restyle
+
+- useIndividualFeedback.js: switched from single awaited response to SSE streaming
+  (`stream: true`); prompt now requests one JSON object per line (NDJSON) with no
+  array wrapper; ReadableStream reader + TextDecoder accumulate SSE chunks; each
+  complete `{...}` line on its own is parsed immediately and appended to the
+  `feedbackData` array via functional setState so cards appear progressively
+- Non-completer shape changed to `{"name":"...","isNonCompleter":true}`; completer
+  shape adds `total` and `maxTotal` integer fields; `score` string computed from
+  those fields for backward compat with docUtils
+- `callClaude` transport no longer used for individual feedback — hook now makes its
+  own `fetch` call (same pattern as usePdfExtraction) to support `stream: true`
+- IndividualFeedbackPanel.jsx: full Academic Curator restyle — eyebrow label +
+  h1 header with "Whole Class Feedback" (surface-container-high) and "Download Word
+  Document" (btn-gradient) buttons; live stats bar (total / feedback generated /
+  non-completers) in surface-container-low; "Generating…" spinner pill visible while
+  streaming; filter pills (All Students / Needs Review / No Submission) with
+  CSS max-height transition reveal of threshold range slider; loading block shown
+  below arrived cards while stream is active
+- Threshold slider: range 30–90; auto-set to class average % when streaming
+  completes; label shows current value and class average; filters completers live
+- StudentCard.jsx: two-column article layout (22% left / flex-1 right); completer
+  card uses surface-container-lowest + shadow; left column has name, score pill,
+  and optional "Needs Review" tag (error-container bg, on-error-container text);
+  right column uses three-column CSS grid for WWW (primary) / EBI
+  (on-surface-variant) / To Improve (on-tertiary-container) section labels;
+  non-completer card uses surface-container-low + left border-left error-container,
+  opacity 0.8, dashed placeholder box with error_outline icon
+- App.jsx: IndividualFeedbackPanel gains feedbackLoading, onSwitchToWCF, examBoard,
+  subject, topic props; onSwitchToWCF shows existing WCF data if available or
+  regenerates; render condition changed from `feedbackData &&` to
+  `feedbackData !== null` so panel appears immediately when streaming starts
+- index.css: --color-on-error-container (#752121) added to shell token block
+
 ## v0.20
 - Added EEF-aligned system prompt to useIndividualFeedback.js
 - Feedback now targets subject-process level, requires specific concept references when question text is present, enforces 1–3 sentence limit per section
