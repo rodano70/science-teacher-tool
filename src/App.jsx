@@ -99,6 +99,7 @@ function App({ onStepChange, onRegisterNavigate }) {
     feedbackSuccess,
     setFeedbackSuccess,
     feedbackProgress,
+    truncated,
     handleGenerateFeedback,
     handleDownloadWordDoc,
   } = useIndividualFeedback({
@@ -280,6 +281,7 @@ function App({ onStepChange, onRegisterNavigate }) {
               feedbackData={feedbackData}
               feedbackLoading={feedbackLoading}
               feedbackSuccess={feedbackSuccess}
+              truncated={truncated}
               onDownloadSuccess={setFeedbackSuccess}
               onBack={() => setActiveOutput(null)}
               onSwitchToWCF={onSwitchToWCF}

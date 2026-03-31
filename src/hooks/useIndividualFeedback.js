@@ -27,6 +27,7 @@ export function useIndividualFeedback({
   const [feedbackError, setFeedbackError] = useState('')
   const [feedbackSuccess, setFeedbackSuccess] = useState(false)
   const [feedbackProgress, setFeedbackProgress] = useState(0)
+  const [truncated, setTruncated] = useState(false)
 
   useEffect(() => {
     if (!feedbackLoading) { setFeedbackProgress(0); return }
@@ -84,6 +85,7 @@ Output students in alphabetical order by surname.
 
 Generate personalised WWW / EBI / To Improve feedback for every student who completed the work. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
+    setTruncated(false)
     setFeedbackLoading(true)
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -96,7 +98,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 8000,
+          max_tokens: 16000,
           stream: true,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }],
@@ -128,7 +130,9 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
           let event
           try { event = JSON.parse(payload) } catch { continue }
 
-          if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+          if (event.type === 'message_delta' && event.delta?.stop_reason === 'max_tokens') {
+            setTruncated(true)
+          } else if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
             textBuffer += event.delta.text
             // Split on newlines; keep last (potentially incomplete) line in buffer
             const textLines = textBuffer.split('\n')
@@ -192,6 +196,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
     feedbackSuccess,
     setFeedbackSuccess,
     feedbackProgress,
+    truncated,
     handleGenerateFeedback,
     handleDownloadWordDoc,
   }
