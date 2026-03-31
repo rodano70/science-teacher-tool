@@ -3,11 +3,19 @@ import StudentCard from './StudentCard'
 import { downloadFeedbackDoc } from '../../utils/docUtils'
 import { extractStudentsForFeedback } from '../../classUtils'
 
+// Normalize a student name for fuzzy matching across formats.
+// classUtils produces "Firstname Lastname"; Claude returns "Lastname, Firstname".
+// Stripping commas and sorting words alphabetically makes both map to the same key.
+function normalizeName(name) {
+  return name.toLowerCase().replace(/,/g, '').split(/\s+/).sort().join(' ')
+}
+
 export default function IndividualFeedbackPanel({
   feedbackData,
   feedbackLoading,
   feedbackSuccess,
   onDownloadSuccess,
+  onBack,
   onSwitchToWCF,
   examBoard,
   subject,
@@ -32,12 +40,23 @@ export default function IndividualFeedbackPanel({
   const expectedTotal = rawStudents.length
   const expectedNonCompleters = rawStudents.filter(s => s.total === 0).length
 
-  // name → breakdown string map, e.g. "Q1:1, Q2:0, Q3:1, ..."
+  // name → breakdown string map with two keys per student:
+  // direct key (classUtils format, e.g. "John Smith") and
+  // normalized key (sorted words, e.g. "john smith") to match
+  // Claude's "Surname, Firstname" output format.
   const breakdownMap = useMemo(() => {
-    const map = {}
-    rawStudents.forEach(s => { map[s.name] = s.breakdown })
-    return map
+    const direct = {}
+    const normalized = {}
+    rawStudents.forEach(s => {
+      direct[s.name] = s.breakdown
+      normalized[normalizeName(s.name)] = s.breakdown
+    })
+    return { direct, normalized }
   }, [rawStudents])
+
+  function getBreakdown(name) {
+    return breakdownMap.direct[name] ?? breakdownMap.normalized[normalizeName(name)]
+  }
 
   const students = feedbackData || []
   const completers = students.filter(s => !s.isNonCompleter)
@@ -145,17 +164,41 @@ export default function IndividualFeedbackPanel({
           flex-shrink: 0;
         }
         @keyframes ifp-spin { to { transform: rotate(360deg); } }
+        .ifp-back-btn {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 16px;
+          background: transparent;
+          color: var(--color-on-surface-variant);
+          border: 1px solid var(--color-outline-variant);
+          border-radius: 8px;
+          font-family: inherit; font-size: 14px; font-weight: 500;
+          cursor: pointer; transition: background-color 0.15s;
+        }
+        .ifp-back-btn:hover { background: var(--color-surface-container-high); }
         .sc-field-wrapper { position: relative; cursor: pointer; }
         .sc-field-pencil { position: absolute; top: 0; right: 0; font-size: 15px !important; color: var(--color-on-surface-variant); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
         .sc-field-wrapper:hover .sc-field-pencil { opacity: 1; }
       `}</style>
 
-      {/* Header row */}
-      <div style={styles.header}>
-        <div>
-          {eyebrow && <p style={styles.eyebrow}>{eyebrow}</p>}
-          <h1 style={styles.h1}>Individual Student Feedback</h1>
-        </div>
+      {/* Hero title — matches UploadPanel hero style */}
+      <div style={styles.hero}>
+        <span style={styles.heroEyebrow}>Assessment Intelligence</span>
+        <h1 style={styles.heroTitle}>
+          Individual Student{' '}
+          <br />
+          <span style={styles.heroAccent}>Feedback Review</span>
+        </h1>
+        {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
+      </div>
+
+      {/* Action bar — back, switch, download */}
+      <div style={styles.actionBar}>
+        {onBack && (
+          <button className="ifp-back-btn" onClick={onBack} type="button">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+            Back to Setup
+          </button>
+        )}
         <div style={styles.headerButtons}>
           {onSwitchToWCF && (
             <button className="ifp-switch-btn" onClick={onSwitchToWCF} type="button">
@@ -248,7 +291,7 @@ export default function IndividualFeedbackPanel({
             student={
               student.breakdown
                 ? student
-                : { ...student, breakdown: breakdownMap[student.name] }
+                : { ...student, breakdown: getBreakdown(student.name) }
             }
             threshold={threshold}
             maxTotal={classStats.maxTotal}
@@ -280,32 +323,49 @@ export default function IndividualFeedbackPanel({
 
 const styles = {
   wrapper: {
-    marginTop: '32px',
-    paddingTop: '28px',
-    borderTop: '1px solid rgba(147, 179, 233, 0.2)',
+    paddingTop: '0',
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    flexWrap: 'wrap',
-    gap: '16px',
-    marginBottom: '24px',
+  // Hero title — mirrors UploadPanel hero style exactly
+  hero: {
     padding: '0 48px',
+    marginBottom: '32px',
   },
-  eyebrow: {
-    margin: '0 0 4px',
+  heroEyebrow: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-outline)',
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    marginBottom: '10px',
+  },
+  heroTitle: {
+    margin: '0 0 10px',
+    fontSize: '44px',
+    fontWeight: '800',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '-0.02em',
+    lineHeight: '1.1',
+  },
+  heroAccent: {
+    color: 'var(--color-primary)',
+  },
+  heroContext: {
+    margin: '10px 0 0',
     fontSize: '12px',
     fontWeight: '700',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
     color: 'var(--color-on-surface-variant)',
   },
-  h1: {
-    margin: '0',
-    fontSize: '28px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
+  actionBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '12px',
+    marginBottom: '24px',
+    padding: '0 48px',
   },
   headerButtons: {
     display: 'flex',

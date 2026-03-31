@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.22f — Dedicated feedback page, correct pill colours, hero title consistency
+
+- App.jsx: UploadPanel and output panels are now mutually exclusive — clicking either
+  Generate button shows only the feedback panel; the upload form is hidden. A "Resume"
+  bar appears below the upload form when prior output exists, letting the teacher jump
+  back to it without regenerating. `onBack` prop added to IndividualFeedbackPanel;
+  clicking "← Back to Setup" returns to the upload view with all state (studentData,
+  feedbackData, form fields) intact. WCF panel can be resumed the same way.
+  Removed the now-unnecessary scroll-to-view useEffect and outputRef.
+- IndividualFeedbackPanel.jsx: added `normalizeName` helper that strips commas,
+  lowercases, splits on whitespace and sorts words alphabetically; breakdownMap now
+  stores both a direct key (classUtils format, e.g. "John Smith") and a normalized key
+  (e.g. "john smith"); `getBreakdown` tries direct match first, then normalized — this
+  fixes the all-red pills caused by classUtils producing "Firstname Lastname" while
+  Claude returns "Surname, Firstname" per the prompt instruction
+- IndividualFeedbackPanel.jsx: hero title redesigned to match UploadPanel exactly —
+  11px/700 "Assessment Intelligence" eyebrow in --color-outline, 44px/800 h1 in
+  --color-on-surface with primary-coloured "Feedback Review" accent span; exam/subject/
+  topic context line kept as a smaller uppercase subtitle below the h1; wrapper
+  border-top and marginTop removed (panel is now a full-page view, not appended below)
+- IndividualFeedbackPanel.jsx: "← Back to Setup" button added to action bar (ghost
+  style: transparent bg, outline-variant border); sits at left of action bar;
+  action bar replaces old header row
+
 ## v0.22e — Bug fixes: panel navigation, pill colours, student counts
 
 - App.jsx: added `outputRef` on the output section div and a `useEffect` that calls
