@@ -123,6 +123,17 @@ function App() {
     handleGenerateFeedback()
   }
 
+  function onSwitchToWCF() {
+    setFeedbackData(null)
+    setFeedbackError('')
+    setFeedbackSuccess(false)
+    if (wcfData) {
+      setActiveOutput('wcf')
+    } else {
+      handleGenerateWCF()
+    }
+  }
+
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
 
   const _summary = studentData ? computeClassSummary(studentData) : null
@@ -216,17 +227,22 @@ function App() {
             />
           )}
 
-          {activeOutput === 'individual' && feedbackData && (
+          {activeOutput === 'individual' && feedbackData !== null && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
+              feedbackLoading={feedbackLoading}
               feedbackSuccess={feedbackSuccess}
               onDownload={handleDownloadWordDoc}
+              onSwitchToWCF={onSwitchToWCF}
+              examBoard={examBoard}
+              subject={subject}
+              topic={topic}
             />
           )}
         </div>
       </main>
 
-      <p style={styles.version}>v0.20</p>
+      <p style={styles.version}>v0.21</p>
     </>
   )
 }

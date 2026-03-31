@@ -78,6 +78,7 @@
   --color-tertiary:                  #5d5d78;
   --color-tertiary-container:        #d9d7f8;
   --color-on-tertiary-container:     #4a4a65;
+  --color-on-error-container:        #752121;
 }
 
 /* ── Material Symbols Outlined ───────────────────────────────────────────── */
