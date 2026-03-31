@@ -14,6 +14,7 @@ export default function IndividualFeedbackPanel({
   feedbackData,
   feedbackLoading,
   feedbackSuccess,
+  truncated,
   onDownloadSuccess,
   onBack,
   onSwitchToWCF,
@@ -365,6 +366,14 @@ export default function IndividualFeedbackPanel({
         </div>
       </div>
 
+      {/* Truncation warning */}
+      {!feedbackLoading && truncated && (
+        <div style={styles.truncationWarning}>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px', flexShrink: 0 }}>warning</span>
+          The AI response was cut short — some students above may be missing feedback. Try regenerating.
+        </div>
+      )}
+
       {/* Card list */}
       <div style={styles.cardList}>
         {filteredStudents.map((student, i) => {
@@ -544,6 +553,17 @@ const styles = {
   thresholdLabel: { fontSize: '13px', color: 'var(--color-on-surface)', whiteSpace: 'nowrap' },
   thresholdNote: { fontSize: '12px', color: 'var(--color-on-surface-variant)', fontWeight: '400', marginLeft: '4px' },
   rangeInput: { flexShrink: 0, width: '160px', accentColor: 'var(--color-primary)', cursor: 'pointer' },
+  truncationWarning: {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    margin: '0 48px 16px',
+    padding: '12px 16px',
+    backgroundColor: '#fffbeb',
+    border: '1px solid #fcd34d',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#92400e',
+    lineHeight: '1.5',
+  },
   cardList: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 48px 48px' },
   loadingBlock: {
     display: 'flex', alignItems: 'center', gap: '10px',

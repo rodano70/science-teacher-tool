@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.23d — WCF loading state, IFP empty-state fix, token limit fix, back-button CSS
+
+### Section 2 – Whole Class Feedback
+- **Loading state in WCF panel**: clicking "Generate Whole Class Feedback" from the upload
+  page now navigates immediately to step 2 and shows the full hero ("Whole Class Feedback
+  Sheet") plus a live progress bar while the API call is in flight. Previously the panel
+  showed only the bare "No class feedback yet" empty state during loading, making it look
+  like navigation hadn't happened.
+- **"Back to Setup" button properly styled**: the `.cfp-back-btn` CSS class was defined
+  only inside the data-truthy render branch; the empty state and new loading state both
+  reference the class but the `<style>` block was never injected there, leaving the button
+  completely unstyled. Fixed by extracting a shared CSS string (`sharedCss`) that is
+  injected in all three render branches (loading / empty / full).
+- **New props on ClassFeedbackPanel**: `wcfLoading` (bool, default false) and
+  `wcfProgress` (number 0–100, default 0); wired from `useClassFeedback` via `App.jsx`.
+
+### Section 3 – Individual Student Feedback
+- **Empty state no longer disappears after failed generate**: `handleGenerateFeedback()`
+  called `setFeedbackData([])` before `validateInputs()`, so a failed validation (e.g. no
+  file uploaded) left `feedbackData` as `[]` instead of `null`, bypassing the
+  `hasNoData = feedbackData === null` check and replacing the empty-state card with a stats
+  bar showing all zeros. Fixed by moving `setFeedbackData([])` to after validation passes.
+- **Token limit raised to 16 000**: individual feedback generation raised `max_tokens` from
+  8 000 to 16 000 (claude-sonnet-4-6 supports up to 64 000), covering classes of up to
+  ~100 students without truncation. Previously classes of 50+ could silently lose students.
+- **Truncation detection**: the hook now reads `stop_reason` from the `message_delta` SSE
+  event; if `stop_reason === 'max_tokens'` a new `truncated` boolean state is set. An amber
+  warning banner ("The AI response was cut short — some students above may be missing
+  feedback. Try regenerating.") is shown in `IndividualFeedbackPanel` when loading completes
+  and `truncated` is true.
+
+### General
+- Version bumped to v0.23d in `App.jsx` and `LandingPage.jsx`.
+
 ## v0.23c — Stepper navigation restored and extended to 4 steps
 
 - AppShell.jsx: stepper updated from 3 steps (`1. Upload / 2. Feedback / 3. Dashboard`)

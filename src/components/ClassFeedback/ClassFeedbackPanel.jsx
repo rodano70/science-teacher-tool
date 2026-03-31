@@ -275,6 +275,8 @@ const concernStyles = {
 /* ── Main component ─────────────────────────────────────────────────────── */
 export default function ClassFeedbackPanel({
   data,
+  wcfLoading = false,
+  wcfProgress = 0,
   examBoard,
   subject,
   topic,
@@ -341,10 +343,57 @@ export default function ClassFeedbackPanel({
 
   const eyebrow = [examBoard, subject, topic].filter(Boolean).join(' • ').toUpperCase()
 
+  // ── Shared CSS (needed in loading + empty + full branches) ───────────────
+  const sharedCss = `
+    .cfp-back-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      background: transparent;
+      color: var(--color-on-surface-variant);
+      border: 1px solid var(--color-outline-variant); border-radius: 8px;
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: background-color 0.15s;
+    }
+    .cfp-back-btn:hover { background: var(--color-surface-container-high); }
+  `
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+  if (wcfLoading && !data) {
+    return (
+      <div style={styles.wrapper}>
+        <style>{sharedCss}</style>
+        <div style={styles.hero} className="no-print">
+          <span style={styles.heroEyebrow}>Assessment Intelligence</span>
+          <h1 style={styles.heroTitle}>
+            Whole Class{' '}
+            <br />
+            <span style={styles.heroAccent}>Feedback Sheet</span>
+          </h1>
+          {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
+        </div>
+        <div style={styles.actionBar} className="no-print">
+          {onBack && (
+            <button className="cfp-back-btn" onClick={onBack} type="button">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+              Back to Setup
+            </button>
+          )}
+        </div>
+        <div style={styles.loadingCard}>
+          <p style={styles.loadingLabel}>Generating your class feedback…</p>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Empty state ──────────────────────────────────────────────────────────
   if (!data) {
     return (
       <div style={styles.emptyWrapper}>
+        <style>{sharedCss}</style>
         <div style={styles.emptyCard}>
           <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
           <h2 style={styles.emptyTitle}>No class feedback yet</h2>
@@ -585,6 +634,32 @@ export default function ClassFeedbackPanel({
 }
 
 const styles = {
+  /* ── Loading state ───────────────────────────────────────────────────── */
+  loadingCard: {
+    margin: '0 48px',
+    padding: '32px 40px',
+    background: 'var(--color-surface-container-low)',
+    borderRadius: '16px',
+    border: '1px solid rgba(147, 179, 233, 0.15)',
+  },
+  loadingLabel: {
+    margin: '0 0 16px',
+    fontSize: '14px',
+    color: 'var(--color-on-surface-variant)',
+  },
+  progressTrack: {
+    height: '6px',
+    borderRadius: '999px',
+    background: 'var(--color-surface-container-high)',
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: '999px',
+    background: 'var(--color-primary)',
+    transition: 'width 0.25s ease',
+  },
+
   /* ── Empty state ─────────────────────────────────────────────────────── */
   emptyWrapper: {
     padding: '40px 48px 64px',
