@@ -2,7 +2,7 @@
 
 const SIDEBAR_WIDTH = 256
 
-export default function AppShell({ children, onReset }) {
+export default function AppShell({ children, onReset, activeStep = 0 }) {
   return (
     <div style={styles.root}>
 
@@ -89,10 +89,10 @@ export default function AppShell({ children, onReset }) {
         <div style={styles.stepperBar}>
           {steps.map((step, i) => (
             <div key={i} style={styles.stepItem}>
-              <span style={i === 0 ? styles.stepLabelActive : styles.stepLabelInactive}>
+              <span style={i === activeStep ? styles.stepLabelActive : styles.stepLabelInactive}>
                 {step}
               </span>
-              {i === 0 && <div style={styles.stepUnderline} />}
+              {i === activeStep && <div style={styles.stepUnderline} />}
             </div>
           ))}
         </div>

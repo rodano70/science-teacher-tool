@@ -1,18 +1,62 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import StudentCard from './StudentCard'
+import { downloadFeedbackDoc } from '../../utils/docUtils'
+import { extractStudentsForFeedback } from '../../classUtils'
+
+// Normalize a student name for fuzzy matching across formats.
+// classUtils produces "Firstname Lastname"; Claude returns "Lastname, Firstname".
+// Stripping commas and sorting words alphabetically makes both map to the same key.
+function normalizeName(name) {
+  return name.toLowerCase().replace(/,/g, '').split(/\s+/).sort().join(' ')
+}
 
 export default function IndividualFeedbackPanel({
   feedbackData,
   feedbackLoading,
   feedbackSuccess,
-  onDownload,
+  onDownloadSuccess,
+  onBack,
   onSwitchToWCF,
   examBoard,
   subject,
   topic,
+  questionTexts,
+  studentData,
 }) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [threshold, setThreshold] = useState(60)
+
+  // editsRef holds the latest text for every completer, keyed by student name.
+  // Writing here does not trigger re-renders; read synchronously on download.
+  const editsRef = useRef({})
+
+  // Derive ground-truth counts and breakdown strings from the original Excel data.
+  // feedbackData may have fewer entries than the class if some API JSON lines failed
+  // to parse, so we use classUtils data for display counts and pill-strip breakdown.
+  const rawStudents = useMemo(
+    () => (studentData ? extractStudentsForFeedback(studentData) : []),
+    [studentData]
+  )
+  const expectedTotal = rawStudents.length
+  const expectedNonCompleters = rawStudents.filter(s => s.total === 0).length
+
+  // name → breakdown string map with two keys per student:
+  // direct key (classUtils format, e.g. "John Smith") and
+  // normalized key (sorted words, e.g. "john smith") to match
+  // Claude's "Surname, Firstname" output format.
+  const breakdownMap = useMemo(() => {
+    const direct = {}
+    const normalized = {}
+    rawStudents.forEach(s => {
+      direct[s.name] = s.breakdown
+      normalized[normalizeName(s.name)] = s.breakdown
+    })
+    return { direct, normalized }
+  }, [rawStudents])
+
+  function getBreakdown(name) {
+    return breakdownMap.direct[name] ?? breakdownMap.normalized[normalizeName(name)]
+  }
 
   const students = feedbackData || []
   const completers = students.filter(s => !s.isNonCompleter)
@@ -24,6 +68,19 @@ export default function IndividualFeedbackPanel({
     const avgTotal = completers.reduce((sum, s) => sum + (s.total ?? 0), 0) / completers.length
     return { classAvg: avgTotal, maxTotal }
   }, [completers])
+
+  // Seed editsRef with original API values whenever students array grows
+  useEffect(() => {
+    students.forEach(s => {
+      if (!s.isNonCompleter && !editsRef.current[s.name]) {
+        editsRef.current[s.name] = {
+          www: s.www,
+          ebi: s.ebi,
+          toImprove: s.to_improve,
+        }
+      }
+    })
+  }, [students])
 
   // Auto-set threshold to class average once streaming completes
   useEffect(() => {
@@ -42,6 +99,20 @@ export default function IndividualFeedbackPanel({
     }
     return students
   }, [students, activeFilter, threshold, classStats, completers, nonCompleters])
+
+  async function handleDownload() {
+    const exportData = students.map(s =>
+      s.isNonCompleter
+        ? s
+        : {
+            ...s,
+            www: editsRef.current[s.name]?.www ?? s.www,
+            ebi: editsRef.current[s.name]?.ebi ?? s.ebi,
+            to_improve: editsRef.current[s.name]?.toImprove ?? s.to_improve,
+          }
+    )
+    await downloadFeedbackDoc({ feedbackData: exportData, subject, topic, setFeedbackSuccess: onDownloadSuccess })
+  }
 
   const eyebrow = [examBoard, subject, topic].filter(Boolean).join(' • ').toUpperCase()
   const classAvgPct = classStats.maxTotal > 0
@@ -93,14 +164,41 @@ export default function IndividualFeedbackPanel({
           flex-shrink: 0;
         }
         @keyframes ifp-spin { to { transform: rotate(360deg); } }
+        .ifp-back-btn {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 16px;
+          background: transparent;
+          color: var(--color-on-surface-variant);
+          border: 1px solid var(--color-outline-variant);
+          border-radius: 8px;
+          font-family: inherit; font-size: 14px; font-weight: 500;
+          cursor: pointer; transition: background-color 0.15s;
+        }
+        .ifp-back-btn:hover { background: var(--color-surface-container-high); }
+        .sc-field-wrapper { position: relative; cursor: pointer; }
+        .sc-field-pencil { position: absolute; top: 0; right: 0; font-size: 15px !important; color: var(--color-on-surface-variant); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+        .sc-field-wrapper:hover .sc-field-pencil { opacity: 1; }
       `}</style>
 
-      {/* Header row */}
-      <div style={styles.header}>
-        <div>
-          {eyebrow && <p style={styles.eyebrow}>{eyebrow}</p>}
-          <h1 style={styles.h1}>Individual Student Feedback</h1>
-        </div>
+      {/* Hero title — matches UploadPanel hero style */}
+      <div style={styles.hero}>
+        <span style={styles.heroEyebrow}>Assessment Intelligence</span>
+        <h1 style={styles.heroTitle}>
+          Individual Student{' '}
+          <br />
+          <span style={styles.heroAccent}>Feedback Review</span>
+        </h1>
+        {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
+      </div>
+
+      {/* Action bar — back, switch, download */}
+      <div style={styles.actionBar}>
+        {onBack && (
+          <button className="ifp-back-btn" onClick={onBack} type="button">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+            Back to Setup
+          </button>
+        )}
         <div style={styles.headerButtons}>
           {onSwitchToWCF && (
             <button className="ifp-switch-btn" onClick={onSwitchToWCF} type="button">
@@ -108,7 +206,7 @@ export default function IndividualFeedbackPanel({
               Whole Class Feedback
             </button>
           )}
-          <button className="ifp-dl-btn btn-download" onClick={onDownload} type="button">
+          <button className="ifp-dl-btn btn-download" onClick={handleDownload} type="button">
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
             Download Word Document
           </button>
@@ -119,7 +217,7 @@ export default function IndividualFeedbackPanel({
       <div style={styles.statsBar}>
         <div style={styles.statItem}>
           <p style={styles.statLabel}>Total Students</p>
-          <p style={styles.statValue}>{students.length}</p>
+          <p style={styles.statValue}>{expectedTotal || students.length}</p>
         </div>
         <div style={styles.divider} />
         <div style={styles.statItem}>
@@ -129,7 +227,7 @@ export default function IndividualFeedbackPanel({
         <div style={styles.divider} />
         <div style={styles.statItem}>
           <p style={styles.statLabel}>No Submission</p>
-          <p style={{ ...styles.statValue, color: 'var(--color-error)' }}>{nonCompleters.length}</p>
+          <p style={{ ...styles.statValue, color: 'var(--color-error)' }}>{expectedNonCompleters || nonCompleters.length}</p>
         </div>
         <div style={styles.generatingSlot}>
           {feedbackLoading && (
@@ -190,9 +288,20 @@ export default function IndividualFeedbackPanel({
         {filteredStudents.map((student, i) => (
           <StudentCard
             key={i}
-            student={student}
+            student={
+              student.breakdown
+                ? student
+                : { ...student, breakdown: getBreakdown(student.name) }
+            }
             threshold={threshold}
             maxTotal={classStats.maxTotal}
+            questionTexts={questionTexts}
+            onChange={(field, value) => {
+              editsRef.current[student.name] = {
+                ...editsRef.current[student.name],
+                [field]: value,
+              }
+            }}
           />
         ))}
 
@@ -214,32 +323,49 @@ export default function IndividualFeedbackPanel({
 
 const styles = {
   wrapper: {
-    marginTop: '32px',
-    paddingTop: '28px',
-    borderTop: '1px solid rgba(147, 179, 233, 0.2)',
+    paddingTop: '0',
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    flexWrap: 'wrap',
-    gap: '16px',
-    marginBottom: '24px',
+  // Hero title — mirrors UploadPanel hero style exactly
+  hero: {
     padding: '0 48px',
+    marginBottom: '32px',
   },
-  eyebrow: {
-    margin: '0 0 4px',
+  heroEyebrow: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-outline)',
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    marginBottom: '10px',
+  },
+  heroTitle: {
+    margin: '0 0 10px',
+    fontSize: '44px',
+    fontWeight: '800',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '-0.02em',
+    lineHeight: '1.1',
+  },
+  heroAccent: {
+    color: 'var(--color-primary)',
+  },
+  heroContext: {
+    margin: '10px 0 0',
     fontSize: '12px',
     fontWeight: '700',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
     color: 'var(--color-on-surface-variant)',
   },
-  h1: {
-    margin: '0',
-    fontSize: '28px',
-    fontWeight: '700',
-    color: 'var(--color-on-surface)',
+  actionBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '12px',
+    marginBottom: '24px',
+    padding: '0 48px',
   },
   headerButtons: {
     display: 'flex',

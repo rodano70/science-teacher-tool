@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import UploadPanel from './components/UploadPanel'
 import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
@@ -7,7 +7,7 @@ import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 
-function App() {
+function App({ onStepChange }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -29,6 +29,11 @@ function App() {
 
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
+
+  // Wire stepper: null → step 0, wcf/individual → step 1
+  useEffect(() => {
+    onStepChange?.(activeOutput === null ? 0 : 1)
+  }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 
@@ -118,6 +123,7 @@ function App() {
   }
 
   function onClickGenerateFeedback() {
+    setActiveOutput('individual')
     setWcfData(null)
     setWcfError('')
     handleGenerateFeedback()
@@ -182,39 +188,63 @@ function App() {
     <>
       <main style={styles.main}>
         <div style={styles.card}>
-          <UploadPanel
-            examBoard={examBoard} setExamBoard={setExamBoard}
-            subject={subject} setSubject={setSubject}
-            topic={topic} setTopic={setTopic}
-            gradeBoundaries={gradeBoundaries} setGradeBoundaries={setGradeBoundaries}
-            studentData={studentData}
-            onDataParsed={setStudentData}
-            onReset={handleReset}
-            questionTexts={questionTexts}
-            questionPdfStatus={questionPdfStatus}
-            pdfMeta={pdfMeta}
-            onPdfFile={extractQuestionsFromPdf}
-            clearQuestionTexts={clearQuestionTexts}
-            onQuestionChange={updateQuestionText}
-            wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
-            feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
-          />
 
-          {/* Errors — always shown regardless of active output */}
-          {wcfError && (
-            <div style={styles.errorBox} role="alert">
-              <span style={styles.errorIcon}>!</span>
-              {wcfError}
-            </div>
-          )}
-          {feedbackError && (
-            <div style={styles.errorBox} role="alert">
-              <span style={styles.errorIcon}>!</span>
-              {feedbackError}
-            </div>
+          {/* ── Upload page (step 1) ─────────────────────────────────────── */}
+          {!activeOutput && (
+            <>
+              <UploadPanel
+                examBoard={examBoard} setExamBoard={setExamBoard}
+                subject={subject} setSubject={setSubject}
+                topic={topic} setTopic={setTopic}
+                gradeBoundaries={gradeBoundaries} setGradeBoundaries={setGradeBoundaries}
+                studentData={studentData}
+                onDataParsed={setStudentData}
+                onReset={handleReset}
+                questionTexts={questionTexts}
+                questionPdfStatus={questionPdfStatus}
+                pdfMeta={pdfMeta}
+                onPdfFile={extractQuestionsFromPdf}
+                clearQuestionTexts={clearQuestionTexts}
+                onQuestionChange={updateQuestionText}
+                wcfLoading={wcfLoading} wcfProgress={wcfProgress} onGenerateWCF={onClickGenerateWCF}
+                feedbackLoading={feedbackLoading} feedbackProgress={feedbackProgress} onGenerateFeedback={onClickGenerateFeedback}
+              />
+
+              {/* Errors on upload page */}
+              {wcfError && (
+                <div style={styles.errorBox} role="alert">
+                  <span style={styles.errorIcon}>!</span>
+                  {wcfError}
+                </div>
+              )}
+              {feedbackError && (
+                <div style={styles.errorBox} role="alert">
+                  <span style={styles.errorIcon}>!</span>
+                  {feedbackError}
+                </div>
+              )}
+
+              {/* Resume bar — navigate back to existing output without regenerating */}
+              {(feedbackData?.length > 0 || wcfData) && (
+                <div style={styles.resumeBar}>
+                  {feedbackData?.length > 0 && (
+                    <button style={styles.resumeBtn} onClick={() => setActiveOutput('individual')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>
+                      Resume Individual Feedback
+                    </button>
+                  )}
+                  {wcfData && (
+                    <button style={styles.resumeBtn} onClick={() => setActiveOutput('wcf')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>
+                      Resume Class Feedback
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
-          {/* Single output panel — only one renders at a time */}
+          {/* ── Feedback page (step 2) ───────────────────────────────────── */}
           {activeOutput === 'wcf' && wcfData && (
             <ClassFeedbackPanel
               data={wcfData}
@@ -227,22 +257,26 @@ function App() {
             />
           )}
 
-          {activeOutput === 'individual' && feedbackData !== null && (
+          {activeOutput === 'individual' && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
               feedbackLoading={feedbackLoading}
               feedbackSuccess={feedbackSuccess}
-              onDownload={handleDownloadWordDoc}
+              onDownloadSuccess={setFeedbackSuccess}
+              onBack={() => setActiveOutput(null)}
               onSwitchToWCF={onSwitchToWCF}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
+              questionTexts={questionTexts}
+              studentData={studentData}
             />
           )}
+
         </div>
       </main>
 
-      <p style={styles.version}>v0.21</p>
+      <p style={styles.version}>v0.22f</p>
     </>
   )
 }
@@ -258,6 +292,26 @@ const styles = {
     borderRadius: '0',
     boxShadow: 'none',
     padding: '0',
+  },
+  resumeBar: {
+    padding: '0 48px 40px',
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  resumeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 20px',
+    background: 'var(--color-surface-container-low)',
+    border: '1px solid rgba(147, 179, 233, 0.3)',
+    borderRadius: '8px',
+    fontFamily: 'inherit',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--color-primary)',
+    cursor: 'pointer',
   },
   errorBox: {
     display: 'flex',
