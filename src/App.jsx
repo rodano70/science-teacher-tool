@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import UploadPanel from './components/UploadPanel'
 import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
@@ -33,6 +33,14 @@ function App({ onStepChange }) {
   // Wire stepper: null → step 0, wcf/individual → step 1
   useEffect(() => {
     onStepChange?.(activeOutput === null ? 0 : 1)
+  }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll to output panel whenever a panel is activated
+  const outputRef = useRef(null)
+  useEffect(() => {
+    if (activeOutput) {
+      outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
@@ -221,31 +229,34 @@ function App({ onStepChange }) {
           )}
 
           {/* Single output panel — only one renders at a time */}
-          {activeOutput === 'wcf' && wcfData && (
-            <ClassFeedbackPanel
-              data={wcfData}
-              examBoard={examBoard}
-              subject={subject}
-              topic={topic}
-              studentData={studentData}
-              questionStats={questionStats}
-              scoreDistribution={scoreDistribution}
-            />
-          )}
+          <div ref={outputRef}>
+            {activeOutput === 'wcf' && wcfData && (
+              <ClassFeedbackPanel
+                data={wcfData}
+                examBoard={examBoard}
+                subject={subject}
+                topic={topic}
+                studentData={studentData}
+                questionStats={questionStats}
+                scoreDistribution={scoreDistribution}
+              />
+            )}
 
-          {activeOutput === 'individual' && (
-            <IndividualFeedbackPanel
-              feedbackData={feedbackData}
-              feedbackLoading={feedbackLoading}
-              feedbackSuccess={feedbackSuccess}
-              onDownloadSuccess={setFeedbackSuccess}
-              onSwitchToWCF={onSwitchToWCF}
-              examBoard={examBoard}
-              subject={subject}
-              topic={topic}
-              questionTexts={questionTexts}
-            />
-          )}
+            {activeOutput === 'individual' && (
+              <IndividualFeedbackPanel
+                feedbackData={feedbackData}
+                feedbackLoading={feedbackLoading}
+                feedbackSuccess={feedbackSuccess}
+                onDownloadSuccess={setFeedbackSuccess}
+                onSwitchToWCF={onSwitchToWCF}
+                examBoard={examBoard}
+                subject={subject}
+                topic={topic}
+                questionTexts={questionTexts}
+                studentData={studentData}
+              />
+            )}
+          </div>
         </div>
       </main>
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import StudentCard from './StudentCard'
 import { downloadFeedbackDoc } from '../../utils/docUtils'
+import { extractStudentsForFeedback } from '../../classUtils'
 
 export default function IndividualFeedbackPanel({
   feedbackData,
@@ -12,6 +13,7 @@ export default function IndividualFeedbackPanel({
   subject,
   topic,
   questionTexts,
+  studentData,
 }) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [threshold, setThreshold] = useState(60)
@@ -19,6 +21,23 @@ export default function IndividualFeedbackPanel({
   // editsRef holds the latest text for every completer, keyed by student name.
   // Writing here does not trigger re-renders; read synchronously on download.
   const editsRef = useRef({})
+
+  // Derive ground-truth counts and breakdown strings from the original Excel data.
+  // feedbackData may have fewer entries than the class if some API JSON lines failed
+  // to parse, so we use classUtils data for display counts and pill-strip breakdown.
+  const rawStudents = useMemo(
+    () => (studentData ? extractStudentsForFeedback(studentData) : []),
+    [studentData]
+  )
+  const expectedTotal = rawStudents.length
+  const expectedNonCompleters = rawStudents.filter(s => s.total === 0).length
+
+  // name → breakdown string map, e.g. "Q1:1, Q2:0, Q3:1, ..."
+  const breakdownMap = useMemo(() => {
+    const map = {}
+    rawStudents.forEach(s => { map[s.name] = s.breakdown })
+    return map
+  }, [rawStudents])
 
   const students = feedbackData || []
   const completers = students.filter(s => !s.isNonCompleter)
@@ -155,7 +174,7 @@ export default function IndividualFeedbackPanel({
       <div style={styles.statsBar}>
         <div style={styles.statItem}>
           <p style={styles.statLabel}>Total Students</p>
-          <p style={styles.statValue}>{students.length}</p>
+          <p style={styles.statValue}>{expectedTotal || students.length}</p>
         </div>
         <div style={styles.divider} />
         <div style={styles.statItem}>
@@ -165,7 +184,7 @@ export default function IndividualFeedbackPanel({
         <div style={styles.divider} />
         <div style={styles.statItem}>
           <p style={styles.statLabel}>No Submission</p>
-          <p style={{ ...styles.statValue, color: 'var(--color-error)' }}>{nonCompleters.length}</p>
+          <p style={{ ...styles.statValue, color: 'var(--color-error)' }}>{expectedNonCompleters || nonCompleters.length}</p>
         </div>
         <div style={styles.generatingSlot}>
           {feedbackLoading && (
@@ -226,7 +245,11 @@ export default function IndividualFeedbackPanel({
         {filteredStudents.map((student, i) => (
           <StudentCard
             key={i}
-            student={student}
+            student={
+              student.breakdown
+                ? student
+                : { ...student, breakdown: breakdownMap[student.name] }
+            }
             threshold={threshold}
             maxTotal={classStats.maxTotal}
             questionTexts={questionTexts}
