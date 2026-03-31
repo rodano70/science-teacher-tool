@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.20
+- Added EEF-aligned system prompt to useIndividualFeedback.js
+- Feedback now targets subject-process level, requires specific concept references when question text is present, enforces 1–3 sentence limit per section
+
 ## v0.19.5 — Individual Signals redesign: score badges, ConcernSection, muted palette
 
 - PraiseSection: score (X/Y) extracted from AI text and shown as a small neutral
