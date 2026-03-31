@@ -45,11 +45,12 @@ export function useIndividualFeedback({
   async function handleGenerateFeedback() {
     setActiveOutput('individual')
     setFeedbackError('')
-    setFeedbackData([])
     setFeedbackSuccess(false)
 
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
+
+    setFeedbackData([])
 
     const rawStudents = extractStudentsForFeedback(studentData)
     if (!rawStudents || rawStudents.length === 0) {

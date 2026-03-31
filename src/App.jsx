@@ -264,6 +264,8 @@ function App({ onStepChange, onRegisterNavigate }) {
           {activeOutput === 'wcf' && (
             <ClassFeedbackPanel
               data={wcfData}
+              wcfLoading={wcfLoading}
+              wcfProgress={wcfProgress}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
@@ -296,7 +298,7 @@ function App({ onStepChange, onRegisterNavigate }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.23c</p>
+      <p style={styles.version}>v0.23d</p>
     </>
   )
 }
