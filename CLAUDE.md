@@ -26,14 +26,27 @@ src/
 │   ├── AppShell.jsx          # Pure layout shell (sidebar, stepper) — zero logic
 │   ├── PasswordGate.jsx      # sessionStorage auth; no lockout
 │   ├── UploadPanel.jsx       # Exam metadata form + file inputs
-│   ├── ClassFeedback/        # Whole-class feedback UI (Panel, DiagnosisZone, ImplicationsZone)
-│   └── IndividualFeedback/   # Per-student feedback UI (Panel, StudentCard)
+│   ├── PdfDropZone.jsx       # Question paper PDF upload widget
+│   ├── ClassFeedback/
+│   │   ├── ClassFeedbackPanel.jsx    # WCF panel orchestrator (zones 1-5)
+│   │   ├── ClassFeedbackHeader.jsx   # Hero block, action bar, print header
+│   │   ├── DiagnosisZone.jsx         # Zone 2 — successes / misconceptions
+│   │   ├── ImplicationsZone.jsx      # Zone 4 — immediate / long-term actions
+│   │   └── IndividualSignalsZone.jsx # Zone 3 — praise / concern signals
+│   ├── IndividualFeedback/
+│   │   ├── IndividualFeedbackPanel.jsx # Per-student feedback view
+│   │   └── StudentCard.jsx             # Individual student card
+│   └── shared/
+│       └── EditableItem.jsx  # Reusable click-to-edit textarea (wcf + card variants)
 ├── hooks/
-│   ├── useClassFeedback.js   # WCF prompt + streaming logic + state
+│   ├── useClassFeedback.js      # WCF prompt + streaming logic + state
 │   ├── useIndividualFeedback.js # Individual prompt + SSE streaming + state
-│   └── usePdfExtraction.js   # PDF → question text via Claude Haiku
+│   ├── usePdfExtraction.js      # PDF → question text via Claude Haiku
+│   ├── useProgressSimulation.js # Asymptotic progress animation (shared by all streaming hooks)
+│   └── useAutoSizeTextarea.js   # Auto-resize textarea ref helper
 └── utils/
-    └── docUtils.js           # Generates .docx download via `docx` library
+    ├── docUtils.js     # Generates .docx download via `docx` library
+    └── streamUtils.js  # Shared SSE streaming transport (used by WCF + individual hooks)
 ```
 
 ## 3. Critical Workflows
@@ -73,8 +86,9 @@ for extraction (low tokens). Do not add an Anthropic SDK dependency.
 
 **S4 — Asymptotic progress bars.**
 Long async operations animate progress with `setInterval` at 250 ms:
-`step = Math.max((cap - progress) * 0.02, 0.5)`. Reuse this pattern for any
-new streaming feature; do not use a library.
+`step = Math.max((cap - progress) * 0.02, 0.5)`. This logic lives in
+`useProgressSimulation.js` — import and reuse it for any new streaming feature;
+do not duplicate the interval logic or use a library.
 
 **S5 — Early-return validation.**
 Input guards use a `validateInputs()` pattern that returns an error string or

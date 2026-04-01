@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.24 — Component structure refactor, shared utilities extracted
+
+### Refactoring (no behaviour change)
+- **`ClassFeedbackPanel` decomposed**: 965-line monolith split into focused files —
+  `ClassFeedbackHeader.jsx` (hero, action bar, print header) and
+  `IndividualSignalsZone.jsx` (Zone 3 praise/concern signals). Panel is now ~477 lines.
+- **`EditableItem` shared component**: click-to-edit textarea extracted from
+  `DiagnosisZone`, `ImplicationsZone`, and `StudentCard` into
+  `components/shared/EditableItem.jsx` with `wcf` and `card` style variants.
+  Inline injected styles removed from the three consumer components.
+- **`streamUtils.js`**: duplicated SSE streaming transport consolidated into
+  `utils/streamUtils.js`; consumed by both `useClassFeedback` and
+  `useIndividualFeedback` (removes ~130 lines of duplication).
+- **`useProgressSimulation.js`**: asymptotic progress-bar `setInterval` logic
+  extracted to a dedicated hook and reused across all streaming hooks.
+- **`useAutoSizeTextarea.js`**: auto-resize ref logic extracted from `StudentCard`
+  into a standalone hook.
+- **`ARCHITECTURE.md` removed**: superseded by the Architecture Map in `CLAUDE.md`.
+- Version bumped to v0.24 in `App.jsx` and `LandingPage.jsx`.
+
 ## v0.23e — Sticky menu, compact layout, hero text, Dashboard stub, streaming fix
 
 ### Layout & Navigation
