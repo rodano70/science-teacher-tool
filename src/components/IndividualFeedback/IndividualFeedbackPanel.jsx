@@ -242,9 +242,6 @@ export default function IndividualFeedbackPanel({
           cursor: pointer; transition: background-color 0.15s;
         }
         .ifp-back-btn:hover { background: var(--color-surface-container-high); }
-        .sc-field-wrapper { position: relative; cursor: pointer; }
-        .sc-field-pencil { position: absolute; top: 0; right: 0; font-size: 15px !important; color: var(--color-on-surface-variant); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
-        .sc-field-wrapper:hover .sc-field-pencil { opacity: 1; }
         .ifp-missing-card {
           display: flex; align-items: center; gap: 12px;
           padding: 14px 20px;

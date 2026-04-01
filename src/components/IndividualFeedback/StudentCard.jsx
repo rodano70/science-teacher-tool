@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
+import EditableItem from '../shared/EditableItem'
 
 function parseBreakdown(breakdown) {
   if (!breakdown) return {}
@@ -27,70 +28,8 @@ export default function StudentCard({ student, threshold, maxTotal, questionText
     ? `${student.total} / ${effectiveMaxTotal}`
     : (student.score && student.score !== 'Did not submit' ? student.score : null)
 
-  // Local editable state — initialised once from student props
-  const [wwwValue, setWwwValue] = useState(() => student.www ?? '')
-  const [ebiValue, setEbiValue] = useState(() => student.ebi ?? '')
-  const [toImproveValue, setToImproveValue] = useState(() => student.to_improve ?? '')
-
-  // Editing booleans
-  const [isEditingWww, setIsEditingWww] = useState(false)
-  const [isEditingEbi, setIsEditingEbi] = useState(false)
-  const [isEditingToImprove, setIsEditingToImprove] = useState(false)
-
   // Pill strip hover
   const [hoveredPillIndex, setHoveredPillIndex] = useState(null)
-
-  // Textarea refs
-  const wwwRef = useRef(null)
-  const ebiRef = useRef(null)
-  const toImproveRef = useRef(null)
-
-  // Focus + initial resize when editing starts
-  useEffect(() => {
-    if (isEditingWww && wwwRef.current) {
-      wwwRef.current.focus()
-      wwwRef.current.style.height = 'auto'
-      wwwRef.current.style.height = wwwRef.current.scrollHeight + 'px'
-    }
-  }, [isEditingWww])
-
-  useEffect(() => {
-    if (isEditingEbi && ebiRef.current) {
-      ebiRef.current.focus()
-      ebiRef.current.style.height = 'auto'
-      ebiRef.current.style.height = ebiRef.current.scrollHeight + 'px'
-    }
-  }, [isEditingEbi])
-
-  useEffect(() => {
-    if (isEditingToImprove && toImproveRef.current) {
-      toImproveRef.current.focus()
-      toImproveRef.current.style.height = 'auto'
-      toImproveRef.current.style.height = toImproveRef.current.scrollHeight + 'px'
-    }
-  }, [isEditingToImprove])
-
-  // Auto-resize textarea on value change
-  useEffect(() => {
-    if (wwwRef.current) {
-      wwwRef.current.style.height = 'auto'
-      wwwRef.current.style.height = wwwRef.current.scrollHeight + 'px'
-    }
-  }, [wwwValue])
-
-  useEffect(() => {
-    if (ebiRef.current) {
-      ebiRef.current.style.height = 'auto'
-      ebiRef.current.style.height = ebiRef.current.scrollHeight + 'px'
-    }
-  }, [ebiValue])
-
-  useEffect(() => {
-    if (toImproveRef.current) {
-      toImproveRef.current.style.height = 'auto'
-      toImproveRef.current.style.height = toImproveRef.current.scrollHeight + 'px'
-    }
-  }, [toImproveValue])
 
   const parsedBreakdown = !isNonCompleter ? parseBreakdown(student.breakdown) : {}
   const showPillStrip = !isNonCompleter && Array.isArray(questionTexts) && questionTexts.length > 0
@@ -170,70 +109,37 @@ export default function StudentCard({ student, threshold, maxTotal, questionText
           {/* WWW */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-primary)' }}>WWW</span>
-            <div
-              className="sc-field-wrapper"
-              onClick={() => !isEditingWww && setIsEditingWww(true)}
-            >
-              <span className="material-symbols-outlined sc-field-pencil">edit</span>
-              {isEditingWww ? (
-                <textarea
-                  ref={wwwRef}
-                  value={wwwValue}
-                  onChange={e => setWwwValue(e.target.value)}
-                  onBlur={() => { setIsEditingWww(false); onChange?.('www', wwwValue) }}
-                  onKeyDown={e => { if (e.key === 'Escape') wwwRef.current?.blur() }}
-                  style={editStyles.textarea}
-                />
-              ) : (
-                <p style={styles.sectionText}>{wwwValue}</p>
-              )}
-            </div>
+            <EditableItem
+              variant="card"
+              value={student.www ?? ''}
+              onChange={newVal => onChange?.('www', newVal)}
+              discardOnEscape={false}
+              textStyle={styles.sectionText}
+            />
           </div>
 
           {/* EBI */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-on-surface-variant)' }}>EBI</span>
-            <div
-              className="sc-field-wrapper"
-              onClick={() => !isEditingEbi && setIsEditingEbi(true)}
-            >
-              <span className="material-symbols-outlined sc-field-pencil">edit</span>
-              {isEditingEbi ? (
-                <textarea
-                  ref={ebiRef}
-                  value={ebiValue}
-                  onChange={e => setEbiValue(e.target.value)}
-                  onBlur={() => { setIsEditingEbi(false); onChange?.('ebi', ebiValue) }}
-                  onKeyDown={e => { if (e.key === 'Escape') ebiRef.current?.blur() }}
-                  style={editStyles.textarea}
-                />
-              ) : (
-                <p style={styles.sectionText}>{ebiValue}</p>
-              )}
-            </div>
+            <EditableItem
+              variant="card"
+              value={student.ebi ?? ''}
+              onChange={newVal => onChange?.('ebi', newVal)}
+              discardOnEscape={false}
+              textStyle={styles.sectionText}
+            />
           </div>
 
           {/* To Improve */}
           <div>
             <span style={{ ...styles.sectionLabel, color: 'var(--color-on-tertiary-container)' }}>To Improve</span>
-            <div
-              className="sc-field-wrapper"
-              onClick={() => !isEditingToImprove && setIsEditingToImprove(true)}
-            >
-              <span className="material-symbols-outlined sc-field-pencil">edit</span>
-              {isEditingToImprove ? (
-                <textarea
-                  ref={toImproveRef}
-                  value={toImproveValue}
-                  onChange={e => setToImproveValue(e.target.value)}
-                  onBlur={() => { setIsEditingToImprove(false); onChange?.('toImprove', toImproveValue) }}
-                  onKeyDown={e => { if (e.key === 'Escape') toImproveRef.current?.blur() }}
-                  style={editStyles.textarea}
-                />
-              ) : (
-                <p style={styles.sectionText}>{toImproveValue}</p>
-              )}
-            </div>
+            <EditableItem
+              variant="card"
+              value={student.to_improve ?? ''}
+              onChange={newVal => onChange?.('toImprove', newVal)}
+              discardOnEscape={false}
+              textStyle={styles.sectionText}
+            />
           </div>
 
         </div>
@@ -359,23 +265,6 @@ const pillStyles = {
     fontSize: '13px',
     lineHeight: 1.5,
     color: 'var(--color-on-surface-variant)',
-  },
-}
-
-const editStyles = {
-  textarea: {
-    fontFamily: 'inherit',
-    fontSize: '13px',
-    lineHeight: '1.6',
-    padding: '0',
-    border: 'none',
-    outline: 'none',
-    background: 'var(--color-surface-container-low)',
-    borderRadius: '4px',
-    width: '100%',
-    resize: 'none',
-    color: 'inherit',
-    overflowY: 'hidden',
   },
 }
 

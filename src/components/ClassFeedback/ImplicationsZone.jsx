@@ -10,89 +10,7 @@
  *   long_term_implications — array of strings
  *   onEdit(field, index, value) — optional edit callback
  */
-import { useState, useRef, useEffect } from 'react'
-
-function EditableItem({ value, onChange, textStyle, multiline }) {
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value)
-  const ref = useRef(null)
-
-  useEffect(() => { setVal(value) }, [value])
-
-  useEffect(() => {
-    if (editing && ref.current) {
-      ref.current.focus()
-      ref.current.style.height = 'auto'
-      ref.current.style.height = ref.current.scrollHeight + 'px'
-    }
-  }, [editing])
-
-  if (editing) {
-    return (
-      <textarea
-        ref={ref}
-        value={val}
-        onChange={e => {
-          setVal(e.target.value)
-          if (ref.current) {
-            ref.current.style.height = 'auto'
-            ref.current.style.height = ref.current.scrollHeight + 'px'
-          }
-        }}
-        onBlur={() => { setEditing(false); onChange(val) }}
-        onKeyDown={e => { if (e.key === 'Escape') { setVal(value); setEditing(false) } }}
-        style={{ ...editStyles.textarea, ...(textStyle || {}) }}
-      />
-    )
-  }
-
-  return (
-    <span
-      className="wcf-editable"
-      onClick={() => onChange !== undefined ? setEditing(true) : undefined}
-      style={{ ...editStyles.span, ...(textStyle || {}), cursor: onChange ? 'text' : 'default' }}
-      title={onChange ? 'Click to edit' : undefined}
-    >
-      {val}
-      {onChange && <span style={editStyles.pencil} className="wcf-pencil">✏</span>}
-    </span>
-  )
-}
-
-const editStyles = {
-  span: {
-    display: 'block',
-    borderRadius: '4px',
-    padding: '1px 3px',
-    marginLeft: '-3px',
-    position: 'relative',
-  },
-  pencil: {
-    marginLeft: '5px',
-    fontSize: '10px',
-    opacity: 0,
-    transition: 'opacity 0.15s',
-    pointerEvents: 'none',
-    verticalAlign: 'middle',
-  },
-  textarea: {
-    width: '100%',
-    border: '1px solid var(--color-primary)',
-    borderRadius: '4px',
-    padding: '3px 6px',
-    fontSize: '13px',
-    lineHeight: '1.6',
-    color: 'var(--color-on-surface-variant)',
-    backgroundColor: 'var(--color-surface-container-low)',
-    fontFamily: 'inherit',
-    resize: 'none',
-    outline: 'none',
-    boxSizing: 'border-box',
-    overflow: 'hidden',
-    display: 'block',
-    minHeight: '22px',
-  },
-}
+import EditableItem from '../shared/EditableItem'
 
 export default function ImplicationsZone({ immediate_action, long_term_implications, onEdit }) {
   const toArray = v => Array.isArray(v) ? v : (v ? [v] : [])
@@ -100,10 +18,6 @@ export default function ImplicationsZone({ immediate_action, long_term_implicati
 
   return (
     <div style={styles.wrapper} className="print-page-break">
-      <style>{`
-        .wcf-editable:hover { background-color: rgba(147,179,233,0.12); }
-        .wcf-editable:hover .wcf-pencil { opacity: 0.5; }
-      `}</style>
       <p style={styles.sectionLabel}>Teaching Implications</p>
       <div style={styles.card} className="print-card">
         <div style={styles.columns}>
