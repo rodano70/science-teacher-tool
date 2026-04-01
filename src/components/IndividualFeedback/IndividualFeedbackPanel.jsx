@@ -19,6 +19,7 @@ export default function IndividualFeedbackPanel({
   onDownloadSuccess,
   onBack,
   onSwitchToWCF,
+  onRetryMissing,
   examBoard,
   subject,
   topic,
@@ -250,6 +251,16 @@ export default function IndividualFeedbackPanel({
           border-radius: 12px;
           opacity: 0.75;
         }
+        .ifp-retry-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 7px 14px;
+          background: #fffbeb;
+          color: #92400e;
+          border: 1px solid #fcd34d; border-radius: 8px;
+          font-family: inherit; font-size: 13px; font-weight: 600;
+          cursor: pointer; transition: background-color 0.15s; white-space: nowrap; flex-shrink: 0;
+        }
+        .ifp-retry-btn:hover { background: #fef3c7; }
       `}</style>
 
       {/* Hero title */}
@@ -379,11 +390,25 @@ export default function IndividualFeedbackPanel({
         </div>
       </div>
 
-      {/* Truncation warning */}
-      {!feedbackLoading && truncated && (
+      {/* Truncation / missing-students warning */}
+      {!feedbackLoading && (truncated || missingStudents.length > 0) && (
         <div style={styles.truncationWarning}>
           <span className="material-symbols-outlined" style={{ fontSize: '18px', flexShrink: 0 }}>warning</span>
-          The AI response was cut short — some students above may be missing feedback. Try regenerating.
+          <span style={{ flex: 1 }}>
+            {truncated
+              ? 'The AI response was cut short — some students are missing feedback.'
+              : `${missingStudents.length} student${missingStudents.length !== 1 ? 's' : ''} did not receive feedback.`}
+          </span>
+          {onRetryMissing && missingStudents.length > 0 && (
+            <button
+              className="ifp-retry-btn"
+              onClick={() => onRetryMissing(missingStudents)}
+              type="button"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>refresh</span>
+              Retry {missingStudents.length} missing
+            </button>
+          )}
         </div>
       )}
 

@@ -101,6 +101,7 @@ function App({ onStepChange, onRegisterNavigate }) {
     feedbackProgress,
     truncated,
     handleGenerateFeedback,
+    handleRetryMissing,
     handleDownloadWordDoc,
   } = useIndividualFeedback({
     examBoard,
@@ -289,6 +290,7 @@ function App({ onStepChange, onRegisterNavigate }) {
               onDownloadSuccess={setFeedbackSuccess}
               onBack={() => setActiveOutput(null)}
               onSwitchToWCF={onSwitchToWCF}
+              onRetryMissing={handleRetryMissing}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
@@ -324,7 +326,7 @@ function App({ onStepChange, onRegisterNavigate }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.24</p>
+      <p style={styles.version}>v0.25</p>
     </>
   )
 }

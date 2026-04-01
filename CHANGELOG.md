@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.25 — Streaming fixed, individual feedback reliability improvements
+
+### Streaming fixes (restores behaviour from v0.23e, broken by v0.24 refactor)
+
+- **Root cause identified**: The v0.24 refactor replaced `flushSync` with a
+  `setInterval`-based flush that never fires during active streaming. SSE chunk
+  processing runs entirely as microtasks; `setInterval` is a macrotask and only
+  executes after the microtask queue drains — i.e. after the stream ends. All
+  state updates were therefore batched into a single render at the very end,
+  making the UI appear frozen until generation completed.
+- **Whole Class Feedback — progressive section rendering**: `useClassFeedback`
+  now calls `flushSync(() => setWcfData(...))` directly inside `processWcfObject`,
+  guaranteeing an immediate React render each time a section JSON object is
+  parsed. The `pendingSectionsRef` accumulator and `setInterval` flush have been
+  removed. Sections appear one by one in the WCF sheet as they stream in.
+- **Individual Feedback — per-student render**: `useIndividualFeedback` now calls
+  `flushSync(() => setFeedbackData(...))` directly inside `appendStudent`, mirroring
+  the class feedback fix. Student cards appear on screen as each one is parsed.
+
+### Individual feedback parser robustness
+
+- **Brace-counting JSON extractor**: `useIndividualFeedback` now uses the same
+  `extractJsonObjects` brace-counting parser as `useClassFeedback` instead of the
+  previous line-by-line `split('\n')` approach. The old parser silently dropped any
+  student whose JSON spanned more than one line (e.g. if Claude emitted a literal
+  newline inside a string value). The brace-counting parser is format-agnostic and
+  handles any valid JSON regardless of whitespace or line breaks.
+- **Retry Missing Students button**: when generation completes and one or more
+  students are absent from the API response, an amber warning bar now shows a
+  **Retry N missing** button alongside the count. Clicking it fires a second
+  streaming API call targeted at exactly those students and appends their cards to
+  the existing results — no need to regenerate the whole class. Works whether the
+  cause is a `max_tokens` truncation or a parse failure for a specific student.
+
+### General
+
+- Version bumped to v0.25 in `App.jsx` and `LandingPage.jsx`.
+
 ## v0.24 — Component structure refactor, shared utilities extracted
 
 ### Refactoring (no behaviour change)
