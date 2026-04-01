@@ -291,6 +291,10 @@ export default function ClassFeedbackPanel({
   const [editedData, setEditedData] = useState(data || {})
   const [downloadSuccess, setDownloadSuccess] = useState(false)
 
+  const TOTAL_SECTIONS = 7
+  const SECTION_KEYS_ALL = ['key_successes', 'key_misconceptions', 'individual_concerns', 'little_errors', 'students_to_praise', 'long_term_implications', 'immediate_action']
+  const sectionsReceived = data ? SECTION_KEYS_ALL.filter(k => data[k] !== undefined).length : 0
+
   useEffect(() => {
     if (data) setEditedData(data)
   }, [data])
@@ -358,46 +362,8 @@ export default function ClassFeedbackPanel({
     .cfp-back-btn:hover { background: var(--color-surface-container-high); }
   `
 
-  // ── Loading state ─────────────────────────────────────────────────────────
-  if (wcfLoading && !data) {
-    return (
-      <div style={styles.wrapper}>
-        <style>{sharedCss}</style>
-        <div style={styles.hero} className="no-print">
-          <span style={styles.heroEyebrow}>Assessment Intelligence</span>
-          <h1 style={styles.heroTitle}>
-            Whole Class{' '}
-            <span style={styles.heroDot}>·</span>{' '}
-            <span style={styles.heroAccent}>Feedback Sheet</span>
-          </h1>
-          {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
-        </div>
-        <div style={styles.actionBar} className="no-print">
-          {onBack && (
-            <button className="cfp-back-btn" onClick={onBack} type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
-              Back to Setup
-            </button>
-          )}
-        </div>
-        <div style={styles.loadingCard}>
-          <p style={styles.loadingLabel}>Generating your class feedback…</p>
-          <div style={styles.progressTrack}>
-            <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
-          </div>
-        </div>
-        {wcfError && (
-          <div style={styles.errorBox}>
-            <span style={styles.errorIcon}>!</span>
-            {wcfError}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // ── Empty state ──────────────────────────────────────────────────────────
-  if (!data) {
+  if (!data && !wcfLoading) {
     return (
       <div style={styles.wrapper}>
         <style>{sharedCss}</style>
@@ -507,10 +473,10 @@ export default function ClassFeedbackPanel({
           </button>
         )}
         <div style={styles.headerButtons}>
-          {wcfLoading && (
+          {data && wcfLoading && (
             <span style={styles.streamingPill}>
               <span style={styles.streamingDot} />
-              {`Generating… ${Object.keys(editedData).length} of 7 sections`}
+              {`${sectionsReceived} of ${TOTAL_SECTIONS} modules generated`}
             </span>
           )}
           {onSwitchToIndividual && !wcfLoading && (
@@ -531,8 +497,29 @@ export default function ClassFeedbackPanel({
         </div>
       </div>
 
-      {/* ── WCF Sheet ────────────────────────────────────────────────────── */}
-      <div style={styles.sheet} id="wcf-sheet">
+      {/* ── Loading card — Phase 1: generating, no sections received yet ──── */}
+      {wcfLoading && !data && (
+        <div style={styles.loadingCard}>
+          <div style={styles.loadingHeader}>
+            <p style={styles.loadingLabel}>Generating your class feedback…</p>
+            <span style={styles.loadingCount}>0 of {TOTAL_SECTIONS} modules</span>
+          </div>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Error box ─────────────────────────────────────────────────────── */}
+      {wcfError && (
+        <div style={styles.errorBox}>
+          <span style={styles.errorIcon}>!</span>
+          {wcfError}
+        </div>
+      )}
+
+      {/* ── WCF Sheet — Phase 2+: sections arriving or complete ──────────── */}
+      {data && <div style={styles.sheet} id="wcf-sheet">
 
         {/* ── Zone 1: Context header ─────────────────────────────────────── */}
         <div style={styles.zone1}>
@@ -663,7 +650,8 @@ export default function ClassFeedbackPanel({
           </div>
         )}
 
-      </div>
+      </div>}
+
     </div>
   )
 }
@@ -677,8 +665,20 @@ const styles = {
     borderRadius: '16px',
     border: '1px solid rgba(147, 179, 233, 0.15)',
   },
+  loadingHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: '16px',
+  },
+  loadingCount: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: 'var(--color-primary)',
+    whiteSpace: 'nowrap',
+  },
   loadingLabel: {
-    margin: '0 0 16px',
+    margin: '0',
     fontSize: '14px',
     color: 'var(--color-on-surface-variant)',
   },
