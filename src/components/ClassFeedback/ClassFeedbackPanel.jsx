@@ -277,6 +277,7 @@ export default function ClassFeedbackPanel({
   data,
   wcfLoading = false,
   wcfProgress = 0,
+  wcfError = '',
   examBoard,
   subject,
   topic,
@@ -289,6 +290,10 @@ export default function ClassFeedbackPanel({
   // Editable copy of data — changes here flow to download but not back to API
   const [editedData, setEditedData] = useState(data || {})
   const [downloadSuccess, setDownloadSuccess] = useState(false)
+
+  const TOTAL_SECTIONS = 7
+  const SECTION_KEYS_ALL = ['key_successes', 'key_misconceptions', 'individual_concerns', 'little_errors', 'students_to_praise', 'long_term_implications', 'immediate_action']
+  const sectionsReceived = data ? SECTION_KEYS_ALL.filter(k => data[k] !== undefined).length : 0
 
   useEffect(() => {
     if (data) setEditedData(data)
@@ -357,8 +362,8 @@ export default function ClassFeedbackPanel({
     .cfp-back-btn:hover { background: var(--color-surface-container-high); }
   `
 
-  // ── Loading state ─────────────────────────────────────────────────────────
-  if (wcfLoading && !data) {
+  // ── Empty state ──────────────────────────────────────────────────────────
+  if (!data && !wcfLoading) {
     return (
       <div style={styles.wrapper}>
         <style>{sharedCss}</style>
@@ -366,7 +371,7 @@ export default function ClassFeedbackPanel({
           <span style={styles.heroEyebrow}>Assessment Intelligence</span>
           <h1 style={styles.heroTitle}>
             Whole Class{' '}
-            <br />
+            <span style={styles.heroDot}>·</span>{' '}
             <span style={styles.heroAccent}>Feedback Sheet</span>
           </h1>
           {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
@@ -379,34 +384,21 @@ export default function ClassFeedbackPanel({
             </button>
           )}
         </div>
-        <div style={styles.loadingCard}>
-          <p style={styles.loadingLabel}>Generating your class feedback…</p>
-          <div style={styles.progressTrack}>
-            <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+        {wcfError && (
+          <div style={styles.errorBox}>
+            <span style={styles.errorIcon}>!</span>
+            {wcfError}
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Empty state ──────────────────────────────────────────────────────────
-  if (!data) {
-    return (
-      <div style={styles.emptyWrapper}>
-        <style>{sharedCss}</style>
-        <div style={styles.emptyCard}>
-          <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
-          <h2 style={styles.emptyTitle}>No class feedback yet</h2>
-          <p style={styles.emptyDesc}>
-            Go to the Upload section, upload your marksheet and fill in the exam details, then click{' '}
-            <strong>Generate Whole Class Feedback</strong>.
-          </p>
-          {onBack && (
-            <button className="cfp-back-btn" onClick={onBack} type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
-              Back to Setup
-            </button>
-          )}
+        )}
+        <div style={styles.emptyInner}>
+          <div style={styles.emptyCard}>
+            <span className="material-symbols-outlined" style={styles.emptyIcon}>group</span>
+            <h2 style={styles.emptyTitle}>No class feedback yet</h2>
+            <p style={styles.emptyDesc}>
+              Go to the Upload section, upload your marksheet and fill in the exam details, then click{' '}
+              <strong>Generate Whole Class Feedback</strong>.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -447,6 +439,7 @@ export default function ClassFeedbackPanel({
         .cfp-back-btn:hover { background: var(--color-surface-container-high); }
         .wcf-editable:hover { background-color: rgba(147,179,233,0.12); }
         .wcf-editable:hover .wcf-pencil { opacity: 0.5; }
+        @keyframes wcf-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
       {/* ── Print-only header ─────────────────────────────────────────────── */}
@@ -465,7 +458,7 @@ export default function ClassFeedbackPanel({
         <span style={styles.heroEyebrow}>Assessment Intelligence</span>
         <h1 style={styles.heroTitle}>
           Whole Class{' '}
-          <br />
+          <span style={styles.heroDot}>·</span>{' '}
           <span style={styles.heroAccent}>Feedback Sheet</span>
         </h1>
         {eyebrow && <p style={styles.heroContext}>{eyebrow}</p>}
@@ -480,24 +473,53 @@ export default function ClassFeedbackPanel({
           </button>
         )}
         <div style={styles.headerButtons}>
-          {onSwitchToIndividual && (
+          {data && wcfLoading && (
+            <span style={styles.streamingPill}>
+              <span style={styles.streamingDot} />
+              {`${sectionsReceived} of ${TOTAL_SECTIONS} modules generated`}
+            </span>
+          )}
+          {onSwitchToIndividual && !wcfLoading && (
             <button className="cfp-switch-btn" onClick={onSwitchToIndividual} type="button">
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>person</span>
               Individual Student Feedback
             </button>
           )}
-          <button className="cfp-dl-btn" onClick={handleDownload} type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
-            Download Word Document
-          </button>
+          {!wcfLoading && (
+            <button className="cfp-dl-btn" onClick={handleDownload} type="button">
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
+              Download Word Document
+            </button>
+          )}
           {downloadSuccess && (
             <span style={styles.successNote}>Downloaded ✓</span>
           )}
         </div>
       </div>
 
-      {/* ── WCF Sheet ────────────────────────────────────────────────────── */}
-      <div style={styles.sheet} id="wcf-sheet">
+      {/* ── Loading card — Phase 1: generating, no sections received yet ──── */}
+      {wcfLoading && !data && (
+        <div style={styles.loadingCard}>
+          <div style={styles.loadingHeader}>
+            <p style={styles.loadingLabel}>Generating your class feedback…</p>
+            <span style={styles.loadingCount}>0 of {TOTAL_SECTIONS} modules</span>
+          </div>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Error box ─────────────────────────────────────────────────────── */}
+      {wcfError && (
+        <div style={styles.errorBox}>
+          <span style={styles.errorIcon}>!</span>
+          {wcfError}
+        </div>
+      )}
+
+      {/* ── WCF Sheet — Phase 2+: sections arriving or complete ──────────── */}
+      {data && <div style={styles.sheet} id="wcf-sheet">
 
         {/* ── Zone 1: Context header ─────────────────────────────────────── */}
         <div style={styles.zone1}>
@@ -628,7 +650,8 @@ export default function ClassFeedbackPanel({
           </div>
         )}
 
-      </div>
+      </div>}
+
     </div>
   )
 }
@@ -636,14 +659,26 @@ export default function ClassFeedbackPanel({
 const styles = {
   /* ── Loading state ───────────────────────────────────────────────────── */
   loadingCard: {
-    margin: '0 48px',
+    margin: '0 32px',
     padding: '32px 40px',
     background: 'var(--color-surface-container-low)',
     borderRadius: '16px',
     border: '1px solid rgba(147, 179, 233, 0.15)',
   },
+  loadingHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: '16px',
+  },
+  loadingCount: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: 'var(--color-primary)',
+    whiteSpace: 'nowrap',
+  },
   loadingLabel: {
-    margin: '0 0 16px',
+    margin: '0',
     fontSize: '14px',
     color: 'var(--color-on-surface-variant)',
   },
@@ -667,6 +702,11 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'flex-start',
     minHeight: '400px',
+  },
+  emptyInner: {
+    padding: '0 32px 48px',
+    display: 'flex',
+    justifyContent: 'center',
   },
   emptyCard: {
     display: 'flex',
@@ -697,15 +737,44 @@ const styles = {
     lineHeight: '1.6',
   },
 
+  /* ── Error box ───────────────────────────────────────────────────────── */
+  errorBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    margin: '16px 32px 0',
+    padding: '12px 16px',
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    fontSize: '14px',
+    color: '#b91c1c',
+    lineHeight: '1.5',
+  },
+  errorIcon: {
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    backgroundColor: '#b91c1c',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: '700',
+    marginTop: '1px',
+  },
+
   /* ── Wrapper ─────────────────────────────────────────────────────────── */
   wrapper: {
-    paddingTop: '40px',
+    paddingTop: '28px',
   },
 
   /* ── Hero (screen only) ──────────────────────────────────────────────── */
   hero: {
-    padding: '0 48px',
-    marginBottom: '32px',
+    padding: '0 32px',
+    marginBottom: '20px',
   },
   heroEyebrow: {
     display: 'block',
@@ -714,21 +783,25 @@ const styles = {
     color: 'var(--color-outline)',
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
-    marginBottom: '10px',
+    marginBottom: '8px',
   },
   heroTitle: {
-    margin: '0 0 10px',
-    fontSize: '44px',
+    margin: '0 0 8px',
+    fontSize: '34px',
     fontWeight: '800',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
-    lineHeight: '1.1',
+    lineHeight: '1.2',
+  },
+  heroDot: {
+    color: 'var(--color-outline)',
+    fontWeight: '400',
   },
   heroAccent: {
     color: 'var(--color-primary)',
   },
   heroContext: {
-    margin: '10px 0 0',
+    margin: '8px 0 0',
     fontSize: '12px',
     fontWeight: '700',
     letterSpacing: '0.08em',
@@ -743,8 +816,8 @@ const styles = {
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '12px',
-    marginBottom: '24px',
-    padding: '0 48px',
+    marginBottom: '20px',
+    padding: '0 32px',
   },
   headerButtons: {
     display: 'flex',
@@ -756,6 +829,24 @@ const styles = {
     fontSize: '13px',
     color: 'var(--color-primary)',
     fontWeight: '500',
+  },
+  streamingPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    background: 'var(--color-surface-container)',
+    border: '1px solid rgba(147, 179, 233, 0.3)',
+    borderRadius: '999px',
+    fontSize: '12px',
+    color: 'var(--color-on-surface-variant)',
+  },
+  streamingDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--color-primary)',
+    animation: 'wcf-pulse 1.2s ease-in-out infinite',
   },
 
   /* ── Print-only header ───────────────────────────────────────────────── */
@@ -781,9 +872,9 @@ const styles = {
     borderRadius: '8px',
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    marginLeft: '48px',
-    marginRight: '48px',
-    marginBottom: '48px',
+    marginLeft: '32px',
+    marginRight: '32px',
+    marginBottom: '40px',
   },
 
   /* ── Zone 1: Context header ──────────────────────────────────────────── */

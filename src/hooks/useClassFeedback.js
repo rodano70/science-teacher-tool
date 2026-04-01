@@ -1,13 +1,69 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 
-// Each tick, advance by max(fraction × remaining gap, min step).
-// Lower fraction slows the initial rush; the min step floor keeps the bar
-// visibly moving near the 90% cap instead of appearing to freeze.
 const PROGRESS_STEP_FRACTION = 0.02
-const PROGRESS_MIN_STEP = 0.5   // % per tick — floor near the cap
+const PROGRESS_MIN_STEP = 0.5
 const PROGRESS_TICK_MS = 250
 const PROGRESS_CAP = 90
+
+const SECTION_KEYS = [
+  'key_successes',
+  'key_misconceptions',
+  'individual_concerns',
+  'little_errors',
+  'students_to_praise',
+  'long_term_implications',
+  'immediate_action',
+]
+
+// Extract complete, top-level JSON objects from a streaming text buffer.
+// Uses brace counting and handles strings with escaped characters correctly.
+// Returns { objects: Array<object>, remaining: string } where remaining is
+// any incomplete JSON fragment to keep in the buffer for the next chunk.
+function extractJsonObjects(buffer) {
+  const objects = []
+  let i = 0
+
+  while (i < buffer.length) {
+    // Fast-forward to the next opening brace
+    const start = buffer.indexOf('{', i)
+    if (start === -1) break
+
+    let depth = 0
+    let inString = false
+    let escaped = false
+    let end = -1
+
+    for (let j = start; j < buffer.length; j++) {
+      const c = buffer[j]
+      if (escaped) { escaped = false; continue }
+      if (c === '\\' && inString) { escaped = true; continue }
+      if (c === '"') { inString = !inString; continue }
+      if (inString) continue
+      if (c === '{') depth++
+      else if (c === '}') {
+        depth--
+        if (depth === 0) { end = j; break }
+      }
+    }
+
+    if (end === -1) {
+      // Incomplete object — keep from start onwards as the remaining buffer
+      return { objects, remaining: buffer.slice(start) }
+    }
+
+    const candidate = buffer.slice(start, end + 1)
+    try {
+      const parsed = JSON.parse(candidate)
+      objects.push(parsed)
+    } catch {
+      // Balanced braces but invalid JSON — skip past this opening brace
+    }
+    i = end + 1
+  }
+
+  return { objects, remaining: '' }
+}
 
 export function useClassFeedback({
   examBoard,
@@ -17,13 +73,16 @@ export function useClassFeedback({
   studentData,
   questionTexts,
   validateInputs,
-  callClaude,
   setActiveOutput,
 }) {
   const [wcfData, setWcfData] = useState(null)
   const [wcfLoading, setWcfLoading] = useState(false)
   const [wcfError, setWcfError] = useState('')
   const [wcfProgress, setWcfProgress] = useState(0)
+
+  // Accumulator ref: sections extracted from the stream are stored here and
+  // flushed to state on a 250 ms interval so React re-renders incrementally.
+  const pendingSectionsRef = useRef({})
 
   useEffect(() => {
     if (!wcfLoading) { setWcfProgress(0); return }
@@ -65,40 +124,122 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 Class data summary:
 ${summaryText}
 
-Generate a Whole Class Feedback sheet. Return ONLY a valid JSON object with exactly these seven keys. No preamble, no markdown fences, no extra text — just the JSON.
+Generate a Whole Class Feedback sheet. Output each section as a separate JSON object on its own line (NDJSON). No preamble, no markdown fences, no extra text.
 
-{
-  "key_successes": ["array of bullet-point strings describing what the class did well"],
-  "key_misconceptions": ["array of bullet-point strings, each describing a misconception and a suggested reteach action"],
-  "individual_concerns": ["array of strings, each naming a specific student and their concern — use the student names from the data"],
-  "little_errors": ["array of bullet-point strings about small mistakes: command words, units, spelling, working out"],
-  "students_to_praise": ["array of strings, each naming a student and why they should be praised"],
-  "long_term_implications": ["array of bullet-point strings about scheme-of-work or teaching changes to make"],
-  "immediate_action": "one specific thing the teacher should do in the next lesson to address the main misconception"
-}
+Output exactly these seven objects in order:
+{"section":"key_successes","data":["bullet string","bullet string"]}
+{"section":"key_misconceptions","data":["misconception + reteach action","..."]}
+{"section":"individual_concerns","data":["Name: concern description","..."]}
+{"section":"little_errors","data":["small mistake description","..."]}
+{"section":"students_to_praise","data":["Name — reason","..."]}
+{"section":"long_term_implications","data":["SOW implication","..."]}
+{"section":"immediate_action","data":"one specific next-lesson action string"}
 
-Base your analysis on the question averages and student performance data provided. Be specific and curriculum-relevant for ${examBoard} ${subject}.`
+Be specific and curriculum-relevant for ${examBoard} ${subject}.`
 
+    pendingSectionsRef.current = {}
     setWcfLoading(true)
-    try {
-      const data = await callClaude(
-        'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a structured Whole Class Feedback sheet as a JSON object. Return only valid JSON with no markdown fences.',
-        userPrompt,
-        4000
-      )
-      let rawText = data.content?.[0]?.text ?? ''
-      rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/, '').trim()
-      const parsed = JSON.parse(rawText)
-      setWcfData(parsed)
-    } catch (err) {
-      if (err instanceof SyntaxError) {
-        setWcfError('The AI returned an unexpected format. Please try again.')
-      } else {
-        setWcfError(err.message)
+
+    // Flush accumulator to state every 250 ms so sections appear progressively
+    const flushInterval = setInterval(() => {
+      const pending = pendingSectionsRef.current
+      if (Object.keys(pending).length > 0) {
+        pendingSectionsRef.current = {}
+        setWcfData(prev => ({ ...(prev || {}), ...pending }))
       }
+    }, 250)
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4000,
+          stream: true,
+          system: 'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a Whole Class Feedback sheet. Output each section as a JSON object on its own line (NDJSON format). Return only the JSON lines — no markdown, no preamble, no extra text.',
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      })
+
+      if (!response.ok) {
+        const errBody = await response.text()
+        throw new Error(`API error ${response.status}: ${errBody}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let sseBuffer = ''
+      let jsonBuffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        sseBuffer += decoder.decode(value, { stream: true })
+        const sseLines = sseBuffer.split('\n')
+        sseBuffer = sseLines.pop() ?? ''
+
+        for (const sseLine of sseLines) {
+          if (!sseLine.startsWith('data: ')) continue
+          const payload = sseLine.slice(6).trim()
+          if (payload === '[DONE]') continue
+          let event
+          try { event = JSON.parse(payload) } catch { continue }
+
+          if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+            jsonBuffer += event.delta.text
+            const { objects, remaining } = extractJsonObjects(jsonBuffer)
+            jsonBuffer = remaining
+            for (const obj of objects) {
+              processWcfObject(obj)
+            }
+          }
+        }
+      }
+
+      // Final parse of anything left in the buffer
+      if (jsonBuffer.trim()) {
+        const { objects } = extractJsonObjects(jsonBuffer)
+        for (const obj of objects) {
+          processWcfObject(obj)
+        }
+      }
+
+    } catch (err) {
+      setWcfError(err.message)
     } finally {
+      clearInterval(flushInterval)
+      // Final flush of any remaining sections
+      const remaining = pendingSectionsRef.current
+      if (Object.keys(remaining).length > 0) {
+        setWcfData(prev => ({ ...(prev || {}), ...remaining }))
+        pendingSectionsRef.current = {}
+      }
       setWcfProgress(100)
       setWcfLoading(false)
+    }
+  }
+
+  // Handle a parsed JSON object from the stream.
+  // Accepts both NDJSON section format and the legacy single-object format.
+  function processWcfObject(obj) {
+    if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
+      // NDJSON section: {"section":"key_successes","data":[...]}
+      pendingSectionsRef.current = { ...pendingSectionsRef.current, [obj.section]: obj.data }
+    } else {
+      // Fallback: legacy single-object format with all sections as top-level keys
+      const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
+      if (found.length > 0) {
+        const patch = {}
+        found.forEach(k => { patch[k] = obj[k] })
+        pendingSectionsRef.current = { ...pendingSectionsRef.current, ...patch }
+      }
     }
   }
 

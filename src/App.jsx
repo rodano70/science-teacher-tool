@@ -30,21 +30,21 @@ function App({ onStepChange, onRegisterNavigate }) {
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
 
-  // Wire stepper step index: null→0, wcf→1, individual→2
+  // Wire stepper step index: null→0, wcf→1, individual→2, dashboard→3
   useEffect(() => {
     if (activeOutput === null) onStepChange?.(0)
     else if (activeOutput === 'wcf') onStepChange?.(1)
     else if (activeOutput === 'individual') onStepChange?.(2)
+    else if (activeOutput === 'dashboard') onStepChange?.(3)
   }, [activeOutput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register navigate function with parent (AppPage) so the stepper can drive navigation.
-  // Re-registers whenever activeOutput changes so the closure captures current state.
   useEffect(() => {
     onRegisterNavigate?.((stepIndex) => {
       if (stepIndex === 0) setActiveOutput(null)
       else if (stepIndex === 1) setActiveOutput('wcf')
       else if (stepIndex === 2) setActiveOutput('individual')
-      // stepIndex 3 = Dashboard (not yet implemented)
+      else if (stepIndex === 3) setActiveOutput('dashboard')
     })
   }, [onRegisterNavigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -266,6 +266,7 @@ function App({ onStepChange, onRegisterNavigate }) {
               data={wcfData}
               wcfLoading={wcfLoading}
               wcfProgress={wcfProgress}
+              wcfError={wcfError}
               examBoard={examBoard}
               subject={subject}
               topic={topic}
@@ -277,11 +278,12 @@ function App({ onStepChange, onRegisterNavigate }) {
             />
           )}
 
-          {/* ── Individual feedback page (step 2) ────────────────────────── */}
+          {/* ── Individual feedback page (step 3) ────────────────────────── */}
           {activeOutput === 'individual' && (
             <IndividualFeedbackPanel
               feedbackData={feedbackData}
               feedbackLoading={feedbackLoading}
+              feedbackError={feedbackError}
               feedbackSuccess={feedbackSuccess}
               truncated={truncated}
               onDownloadSuccess={setFeedbackSuccess}
@@ -295,10 +297,34 @@ function App({ onStepChange, onRegisterNavigate }) {
             />
           )}
 
+          {/* ── Dashboard page (step 4) ──────────────────────────────────── */}
+          {activeOutput === 'dashboard' && (
+            <div style={styles.dashboardWrapper}>
+              <div style={styles.dashboardHero}>
+                <span style={styles.dashboardEyebrow}>Analytics</span>
+                <h1 style={styles.dashboardTitle}>
+                  Assessment <span style={styles.dashboardAccent}>· Dashboard</span>
+                </h1>
+              </div>
+              <div style={styles.comingSoonCard}>
+                <span className="material-symbols-outlined" style={styles.comingSoonIcon}>bar_chart</span>
+                <h2 style={styles.comingSoonTitle}>Coming soon</h2>
+                <p style={styles.comingSoonDesc}>
+                  The Dashboard will bring together class trends, progress tracking, and
+                  longitudinal performance insights across assessments.
+                </p>
+                <button style={styles.comingSoonBtn} onClick={() => setActiveOutput(null)}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+                  Back to Upload
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
 
-      <p style={styles.version}>v0.23d</p>
+      <p style={styles.version}>v0.23e</p>
     </>
   )
 }
@@ -370,6 +396,78 @@ const styles = {
     fontSize: '11px',
     color: '#9ca3af',
     fontWeight: '400',
+  },
+
+  /* Dashboard coming-soon panel */
+  dashboardWrapper: {
+    paddingTop: '32px',
+  },
+  dashboardHero: {
+    padding: '0 32px',
+    marginBottom: '28px',
+  },
+  dashboardEyebrow: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--color-outline)',
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    marginBottom: '8px',
+  },
+  dashboardTitle: {
+    margin: '0',
+    fontSize: '34px',
+    fontWeight: '800',
+    color: 'var(--color-on-surface)',
+    letterSpacing: '-0.02em',
+    lineHeight: '1.15',
+  },
+  dashboardAccent: {
+    color: 'var(--color-primary)',
+  },
+  comingSoonCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    maxWidth: '420px',
+    margin: '0 auto',
+    padding: '48px 40px',
+    backgroundColor: 'var(--color-surface-container-low)',
+    borderRadius: '16px',
+    border: '1px solid rgba(147, 179, 233, 0.15)',
+  },
+  comingSoonIcon: {
+    fontSize: '48px',
+    color: 'var(--color-outline)',
+    marginBottom: '16px',
+  },
+  comingSoonTitle: {
+    margin: '0 0 12px',
+    fontSize: '20px',
+    fontWeight: '700',
+    color: 'var(--color-on-surface)',
+  },
+  comingSoonDesc: {
+    margin: '0 0 28px',
+    fontSize: '14px',
+    color: 'var(--color-on-surface-variant)',
+    lineHeight: '1.6',
+  },
+  comingSoonBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 16px',
+    background: 'transparent',
+    color: 'var(--color-on-surface-variant)',
+    border: '1px solid var(--color-outline-variant)',
+    borderRadius: '8px',
+    fontFamily: 'inherit',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
   },
 }
 

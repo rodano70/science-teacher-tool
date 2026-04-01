@@ -51,7 +51,7 @@ export default function UploadPanel({
         <span style={styles.eyebrow}>Assessment Intelligence</span>
         <h1 style={styles.heroTitle}>
           Upload &amp; Configure{' '}
-          <br />
+          <span style={styles.heroDot}>·</span>{' '}
           <span style={styles.heroAccent}>Assessment Results</span>
         </h1>
       </div>
@@ -272,12 +272,12 @@ export default function UploadPanel({
 
 const styles = {
   wrapper: {
-    padding: '40px 48px 64px',
+    padding: '28px 32px 48px',
   },
 
   /* ── Hero ─────────────────────────────────────────────────────────────── */
   hero: {
-    marginBottom: '48px',
+    marginBottom: '28px',
   },
   eyebrow: {
     display: 'block',
@@ -286,15 +286,19 @@ const styles = {
     color: 'var(--color-outline)',
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
-    marginBottom: '10px',
+    marginBottom: '8px',
   },
   heroTitle: {
     margin: 0,
-    fontSize: '44px',
+    fontSize: '34px',
     fontWeight: '800',
     color: 'var(--color-on-surface)',
     letterSpacing: '-0.02em',
-    lineHeight: '1.1',
+    lineHeight: '1.2',
+  },
+  heroDot: {
+    color: 'var(--color-outline)',
+    fontWeight: '400',
   },
   heroAccent: {
     color: 'var(--color-primary)',
