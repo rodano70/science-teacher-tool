@@ -1,11 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { extractStudentsForFeedback } from '../classUtils'
 import { downloadFeedbackDoc } from '../utils/docUtils'
-
-const PROGRESS_STEP_FRACTION = 0.02
-const PROGRESS_MIN_STEP = 0.5
-const PROGRESS_TICK_MS = 250
-const PROGRESS_CAP = 90
+import { useProgressSimulation } from './useProgressSimulation'
+import { runStream } from '../utils/streamUtils'
 
 const SYSTEM_PROMPT = `You are a feedback assistant generating written feedback for UK secondary science students based on their assessment results.  For each student, write three sections: WWW (What Went Well), EBI (Even Better If), and To Improve.  FEEDBACK RULES — follow these precisely:  WWW must identify a specific strength tied to what the student actually did — never generic praise like "well done" or "good effort." Name the concept or question where they demonstrated understanding.  EBI must be constructive and forward-looking, phrased tentatively: "Even better if you had explained why…" or "Even better if you had connected this to…" It should address the reasoning or method behind the error, not just the wrong answer. Where possible, connect the gap to the underlying concept that transfers beyond this specific question.  To Improve must contain one concrete, specific action the student can take immediately — a question to attempt, a concept to revisit, a sentence to rewrite, or a comparison to make. It must be something genuinely doable, not a vague instruction like "revise this topic."  ALWAYS write at the level of subject process — connect errors to the reasoning or method involved, not just the mark. A student who got Q4 wrong needs to understand what went wrong in their thinking, not just that Q4 was incorrect.  Frame errors as information about learning, not failure. Use tentative, constructive language for areas of development. Never compare students to each other. Never comment on the student as a person ("you're clearly capable," "you need to try harder"). Never use hollow praise.  If question text is provided, you must reference the specific concept, term, or idea from that question — do not refer to questions by number alone. Feedback that names the misconception is always more useful than feedback that does not.  Keep each section to 1–3 sentences. Do not exceed this. `
 
@@ -23,26 +20,13 @@ export function useIndividualFeedback({
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackError, setFeedbackError] = useState('')
   const [feedbackSuccess, setFeedbackSuccess] = useState(false)
-  const [feedbackProgress, setFeedbackProgress] = useState(0)
   const [truncated, setTruncated] = useState(false)
+  const { progress: feedbackProgress, startProgress, completeProgress } = useProgressSimulation()
 
   // Accumulator ref: parsed students are stored here by the stream parser and
   // flushed to React state on a 250 ms interval so cards appear progressively
   // regardless of how the network delivers chunks.
   const pendingStudentsRef = useRef([])
-
-  useEffect(() => {
-    if (!feedbackLoading) { setFeedbackProgress(0); return }
-    setFeedbackProgress(0)
-    const timer = setInterval(() => {
-      setFeedbackProgress(prev => {
-        if (prev >= PROGRESS_CAP) return prev
-        const step = Math.max((PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION, PROGRESS_MIN_STEP)
-        return Math.min(prev + step, PROGRESS_CAP)
-      })
-    }, PROGRESS_TICK_MS)
-    return () => clearInterval(timer)
-  }, [feedbackLoading])
 
   async function handleGenerateFeedback() {
     setActiveOutput('individual')
@@ -90,6 +74,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
 
     pendingStudentsRef.current = []
     setTruncated(false)
+    startProgress()
     setFeedbackLoading(true)
 
     // Flush accumulator to state every 250 ms so student cards appear
@@ -124,41 +109,20 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
         throw new Error(`API error ${response.status}: ${errBody}`)
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let sseBuffer = ''
       let textBuffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        sseBuffer += decoder.decode(value, { stream: true })
-        const sseLines = sseBuffer.split('\n')
-        sseBuffer = sseLines.pop() ?? ''
-
-        for (const sseLine of sseLines) {
-          if (!sseLine.startsWith('data: ')) continue
-          const payload = sseLine.slice(6).trim()
-          if (payload === '[DONE]') continue
-          let event
-          try { event = JSON.parse(payload) } catch { continue }
-
-          if (event.type === 'message_delta' && event.delta?.stop_reason === 'max_tokens') {
-            setTruncated(true)
-          } else if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-            textBuffer += event.delta.text
-            const textLines = textBuffer.split('\n')
-            textBuffer = textLines.pop() ?? ''
-            for (const textLine of textLines) {
-              tryParseStudentLine(textLine)
-            }
-          } else if (event.type === 'message_stop') {
-            tryParseStudentLine(textBuffer)
-            textBuffer = ''
+      await runStream(
+        response,
+        chunk => {
+          textBuffer += chunk
+          const textLines = textBuffer.split('\n')
+          textBuffer = textLines.pop() ?? ''
+          for (const textLine of textLines) {
+            tryParseStudentLine(textLine)
           }
-        }
-      }
+        },
+        reason => { if (reason === 'max_tokens') setTruncated(true) }
+      )
 
       if (textBuffer.trim()) tryParseStudentLine(textBuffer)
 
@@ -175,7 +139,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
         const remaining = pendingStudentsRef.current.splice(0)
         setFeedbackData(prev => [...(prev || []), ...remaining])
       }
-      setFeedbackProgress(100)
+      completeProgress()
       setFeedbackLoading(false)
     }
   }

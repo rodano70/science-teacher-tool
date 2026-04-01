@@ -1,10 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
-
-const PROGRESS_STEP_FRACTION = 0.02
-const PROGRESS_MIN_STEP = 0.5
-const PROGRESS_TICK_MS = 250
-const PROGRESS_CAP = 90
+import { useProgressSimulation } from './useProgressSimulation'
+import { runStream } from '../utils/streamUtils'
 
 const SECTION_KEYS = [
   'key_successes',
@@ -78,24 +75,11 @@ export function useClassFeedback({
   const [wcfData, setWcfData] = useState(null)
   const [wcfLoading, setWcfLoading] = useState(false)
   const [wcfError, setWcfError] = useState('')
-  const [wcfProgress, setWcfProgress] = useState(0)
+  const { progress: wcfProgress, startProgress, completeProgress } = useProgressSimulation()
 
   // Accumulator ref: sections extracted from the stream are stored here and
   // flushed to state on a 250 ms interval so React re-renders incrementally.
   const pendingSectionsRef = useRef({})
-
-  useEffect(() => {
-    if (!wcfLoading) { setWcfProgress(0); return }
-    setWcfProgress(0)
-    const timer = setInterval(() => {
-      setWcfProgress(prev => {
-        if (prev >= PROGRESS_CAP) return prev
-        const step = Math.max((PROGRESS_CAP - prev) * PROGRESS_STEP_FRACTION, PROGRESS_MIN_STEP)
-        return Math.min(prev + step, PROGRESS_CAP)
-      })
-    }, PROGRESS_TICK_MS)
-    return () => clearInterval(timer)
-  }, [wcfLoading])
 
   async function handleGenerateWCF() {
     setActiveOutput('wcf')
@@ -138,6 +122,7 @@ Output exactly these seven objects in order:
 Be specific and curriculum-relevant for ${examBoard} ${subject}.`
 
     pendingSectionsRef.current = {}
+    startProgress()
     setWcfLoading(true)
 
     // Flush accumulator to state every 250 ms so sections appear progressively
@@ -172,36 +157,16 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
         throw new Error(`API error ${response.status}: ${errBody}`)
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let sseBuffer = ''
       let jsonBuffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        sseBuffer += decoder.decode(value, { stream: true })
-        const sseLines = sseBuffer.split('\n')
-        sseBuffer = sseLines.pop() ?? ''
-
-        for (const sseLine of sseLines) {
-          if (!sseLine.startsWith('data: ')) continue
-          const payload = sseLine.slice(6).trim()
-          if (payload === '[DONE]') continue
-          let event
-          try { event = JSON.parse(payload) } catch { continue }
-
-          if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-            jsonBuffer += event.delta.text
-            const { objects, remaining } = extractJsonObjects(jsonBuffer)
-            jsonBuffer = remaining
-            for (const obj of objects) {
-              processWcfObject(obj)
-            }
-          }
+      await runStream(response, chunk => {
+        jsonBuffer += chunk
+        const { objects, remaining } = extractJsonObjects(jsonBuffer)
+        jsonBuffer = remaining
+        for (const obj of objects) {
+          processWcfObject(obj)
         }
-      }
+      })
 
       // Final parse of anything left in the buffer
       if (jsonBuffer.trim()) {
@@ -221,7 +186,7 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
         setWcfData(prev => ({ ...(prev || {}), ...remaining }))
         pendingSectionsRef.current = {}
       }
-      setWcfProgress(100)
+      completeProgress()
       setWcfLoading(false)
     }
   }
