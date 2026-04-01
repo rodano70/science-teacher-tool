@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 import { useProgressSimulation } from './useProgressSimulation'
 import { runStream } from '../utils/streamUtils'
@@ -77,10 +78,6 @@ export function useClassFeedback({
   const [wcfError, setWcfError] = useState('')
   const { progress: wcfProgress, startProgress, completeProgress } = useProgressSimulation()
 
-  // Accumulator ref: sections extracted from the stream are stored here and
-  // flushed to state on a 250 ms interval so React re-renders incrementally.
-  const pendingSectionsRef = useRef({})
-
   async function handleGenerateWCF() {
     setActiveOutput('wcf')
     setWcfError('')
@@ -121,18 +118,8 @@ Output exactly these seven objects in order:
 
 Be specific and curriculum-relevant for ${examBoard} ${subject}.`
 
-    pendingSectionsRef.current = {}
     startProgress()
     setWcfLoading(true)
-
-    // Flush accumulator to state every 250 ms so sections appear progressively
-    const flushInterval = setInterval(() => {
-      const pending = pendingSectionsRef.current
-      if (Object.keys(pending).length > 0) {
-        pendingSectionsRef.current = {}
-        setWcfData(prev => ({ ...(prev || {}), ...pending }))
-      }
-    }, 250)
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -179,31 +166,29 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
     } catch (err) {
       setWcfError(err.message)
     } finally {
-      clearInterval(flushInterval)
-      // Final flush of any remaining sections
-      const remaining = pendingSectionsRef.current
-      if (Object.keys(remaining).length > 0) {
-        setWcfData(prev => ({ ...(prev || {}), ...remaining }))
-        pendingSectionsRef.current = {}
-      }
       completeProgress()
       setWcfLoading(false)
     }
   }
 
   // Handle a parsed JSON object from the stream.
-  // Accepts both NDJSON section format and the legacy single-object format.
+  // Uses flushSync so each section triggers an immediate React render,
+  // making sections appear on screen one by one as they arrive.
   function processWcfObject(obj) {
     if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
       // NDJSON section: {"section":"key_successes","data":[...]}
-      pendingSectionsRef.current = { ...pendingSectionsRef.current, [obj.section]: obj.data }
+      flushSync(() => {
+        setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
+      })
     } else {
       // Fallback: legacy single-object format with all sections as top-level keys
       const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
       if (found.length > 0) {
         const patch = {}
         found.forEach(k => { patch[k] = obj[k] })
-        pendingSectionsRef.current = { ...pendingSectionsRef.current, ...patch }
+        flushSync(() => {
+          setWcfData(prev => ({ ...(prev || {}), ...patch }))
+        })
       }
     }
   }
