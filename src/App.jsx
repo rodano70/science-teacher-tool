@@ -100,6 +100,7 @@ function App({ onStepChange, onRegisterNavigate }) {
     setFeedbackSuccess,
     feedbackProgress,
     truncated,
+    debugInfo,
     handleGenerateFeedback,
     handleRetryMissing,
     handleDownloadWordDoc,
@@ -287,6 +288,7 @@ function App({ onStepChange, onRegisterNavigate }) {
               feedbackError={feedbackError}
               feedbackSuccess={feedbackSuccess}
               truncated={truncated}
+              debugInfo={debugInfo}
               onDownloadSuccess={setFeedbackSuccess}
               onBack={() => setActiveOutput(null)}
               onSwitchToWCF={onSwitchToWCF}
@@ -326,7 +328,7 @@ function App({ onStepChange, onRegisterNavigate }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.26</p>
+      <p style={styles.version}>v0.26b</p>
     </>
   )
 }

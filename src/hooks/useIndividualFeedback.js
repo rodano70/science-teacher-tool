@@ -11,9 +11,10 @@ const SYSTEM_PROMPT = `You are a feedback assistant generating written feedback 
 // Uses brace counting and handles strings/escapes correctly — more robust than
 // line-by-line splitting, which breaks when Claude's output contains literal
 // newlines inside string values.
-// Returns { objects: Array<object>, remaining: string }
+// Returns { objects: Array<object>, remaining: string, errors: Array<{candidate,error}> }
 function extractJsonObjects(buffer) {
   const objects = []
+  const errors = []
   let i = 0
 
   while (i < buffer.length) {
@@ -39,20 +40,21 @@ function extractJsonObjects(buffer) {
     }
 
     if (end === -1) {
-      return { objects, remaining: buffer.slice(start) }
+      return { objects, remaining: buffer.slice(start), errors }
     }
 
     const candidate = buffer.slice(start, end + 1)
     try {
       const parsed = JSON.parse(candidate)
       objects.push(parsed)
-    } catch {
+    } catch (e) {
       // Balanced braces but invalid JSON — skip past this opening brace
+      errors.push({ candidate: candidate.slice(0, 120), error: e.message })
     }
     i = end + 1
   }
 
-  return { objects, remaining: '' }
+  return { objects, remaining: '', errors }
 }
 
 function buildStudentList(students) {
@@ -79,6 +81,7 @@ export function useIndividualFeedback({
   const [feedbackError, setFeedbackError] = useState('')
   const [feedbackSuccess, setFeedbackSuccess] = useState(false)
   const [truncated, setTruncated] = useState(false)
+  const [debugInfo, setDebugInfo] = useState(null)
   const { progress: feedbackProgress, startProgress, completeProgress } = useProgressSimulation()
 
   // Append a validated student object to feedbackData immediately via flushSync,
@@ -117,27 +120,46 @@ export function useIndividualFeedback({
     }
 
     let jsonBuffer = ''
+    let rawOutput = ''
+    let stopReason = null
+    let parsedCount = 0
+    const parseErrors = []
 
     await runStream(
       response,
       chunk => {
+        rawOutput += chunk
         jsonBuffer += chunk
-        const { objects, remaining } = extractJsonObjects(jsonBuffer)
+        const { objects, remaining, errors } = extractJsonObjects(jsonBuffer)
         jsonBuffer = remaining
+        for (const e of errors) parseErrors.push(e)
         for (const obj of objects) {
+          parsedCount++
           appendStudent(obj)
         }
       },
-      reason => { if (reason === 'max_tokens') onTruncated?.() }
+      reason => {
+        stopReason = reason
+        if (reason === 'max_tokens') onTruncated?.()
+      }
     )
 
     // Final parse of anything left in the buffer
     if (jsonBuffer.trim()) {
-      const { objects } = extractJsonObjects(jsonBuffer)
+      const { objects, errors } = extractJsonObjects(jsonBuffer)
+      for (const e of errors) parseErrors.push(e)
       for (const obj of objects) {
+        parsedCount++
         appendStudent(obj)
       }
     }
+
+    setDebugInfo({
+      stopReason: stopReason ?? 'end_turn',
+      parsedCount,
+      parseErrors,
+      rawOutputTail: rawOutput.length > 800 ? '…' + rawOutput.slice(-800) : rawOutput,
+    })
   }
 
   async function handleGenerateFeedback() {
@@ -258,6 +280,7 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
     setFeedbackSuccess,
     feedbackProgress,
     truncated,
+    debugInfo,
     handleGenerateFeedback,
     handleRetryMissing,
     handleDownloadWordDoc,
