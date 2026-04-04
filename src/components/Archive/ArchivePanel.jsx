@@ -18,7 +18,7 @@ function formatDate(iso) {
   }
 }
 
-export default function ArchivePanel({ archive, onViewEntry, onLoadFromArchive }) {
+export default function ArchivePanel({ archive, onViewEntry, onLoadFromArchive, onBack }) {
   const [search, setSearch] = useState('')
   const [filterSubject, setFilterSubject] = useState('All Subjects')
   const [sortKey, setSortKey] = useState('newest')
@@ -140,6 +140,12 @@ export default function ArchivePanel({ archive, onViewEntry, onLoadFromArchive }
     <div style={styles.root}>
 
       {/* ── Page header ───────────────────────────────────────────────── */}
+      {onBack && (
+        <button style={styles.backBtn} onClick={onBack}>
+          <span className="material-symbols-outlined" style={styles.backIcon}>arrow_back</span>
+          Back to Science Feedback
+        </button>
+      )}
       <div style={styles.pageHeader}>
         <div>
           <p style={styles.eyebrow}>Library</p>
@@ -423,6 +429,9 @@ export default function ArchivePanel({ archive, onViewEntry, onLoadFromArchive }
           </div>
         </div>
       )}
+
+      <p style={styles.versionLabel}>v0.27b</p>
+
     </div>
   )
 }
@@ -434,6 +443,31 @@ const styles = {
     padding: '32px',
     maxWidth: '1200px',
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+  },
+
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 0',
+    marginBottom: '16px',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: 'var(--color-on-surface-variant)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  backIcon: {
+    fontSize: '18px',
+  },
+  versionLabel: {
+    margin: '28px 0 0',
+    fontSize: '11px',
+    color: 'var(--color-on-surface-variant)',
+    opacity: 0.4,
+    textAlign: 'right',
   },
 
   pageHeader: {

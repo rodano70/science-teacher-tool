@@ -2,7 +2,7 @@
 
 const SIDEBAR_WIDTH = 220
 
-export default function AppShell({ children, onReset, activeStep = 0, onStepClick, onArchiveClick, archiveActive = false, archiveCount = 0, showStepper = true }) {
+export default function AppShell({ children, onReset, activeStep = 0, onStepClick, onArchiveClick, onBack, archiveActive = false, archiveCount = 0, showStepper = true }) {
   return (
     <div style={styles.root}>
 
@@ -17,8 +17,15 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
           <p style={styles.navSectionLabel}>TOOLS</p>
           <p style={styles.navSectionSubLabel}>Academic Curator</p>
 
-          {/* Active item */}
-          <div style={styles.navItemActive}>
+          {/* Science Feedback — clickable when archive is active to return to tool */}
+          <div
+            style={archiveActive ? styles.navItemInactive : styles.navItemActive}
+            onClick={archiveActive ? onBack : undefined}
+            role={archiveActive ? 'button' : undefined}
+            tabIndex={archiveActive ? 0 : undefined}
+            onKeyDown={archiveActive ? (e => e.key === 'Enter' && onBack?.()) : undefined}
+            title={archiveActive ? 'Back to Science Feedback' : undefined}
+          >
             <span className="material-symbols-outlined" style={styles.navItemIconMs}>biotech</span>
             <span style={styles.navItemLabel}>Science Feedback</span>
           </div>

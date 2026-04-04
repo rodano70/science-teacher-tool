@@ -56,6 +56,7 @@ export default function AppPage() {
         activeStep={view === 'tool' ? activeStep : -1}
         onStepClick={view === 'tool' ? handleStepClick : undefined}
         onArchiveClick={handleArchiveClick}
+        onBack={() => setView('tool')}
         archiveActive={view === 'archive'}
         archiveCount={archive.entries.length}
         showStepper={view === 'tool'}
@@ -73,6 +74,7 @@ export default function AppPage() {
               archive={archive}
               onViewEntry={setViewingEntry}
               onLoadFromArchive={handleLoadFromArchive}
+              onBack={() => setView('tool')}
             />
           )
         ) : (

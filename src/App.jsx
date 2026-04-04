@@ -459,7 +459,7 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
         </div>
       </main>
 
-      <p style={styles.version}>v0.27</p>
+      <p style={styles.version}>v0.27b</p>
     </>
   )
 }
