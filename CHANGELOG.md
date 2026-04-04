@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.26b — Debug toggle for missing individual feedbacks
+
+### Root cause analysis
+
+Individual student feedbacks can silently go missing for three reasons:
+
+1. **Token limit truncation** (`max_tokens: 16000`): Claude stops mid-response when the
+   output exceeds the token cap. Already surfaced in the UI via a truncation warning and
+   "Retry N missing" button, but the underlying stop reason was never shown.
+
+2. **Silent JSON parse failure**: `extractJsonObjects()` skipped students with balanced
+   braces but invalid JSON content (e.g., malformed escapes, format deviations from
+   Claude) using an empty `catch {}` — no error was recorded anywhere. These students
+   appeared as "not returned" with no explanation.
+
+3. **Incomplete JSON at stream end**: If the stream closed abruptly (network timeout,
+   server reset), a partial JSON object in the buffer was silently dropped.
+
+### Changes
+
+- **`useIndividualFeedback.js`** — `extractJsonObjects()` now returns `errors[]`
+  alongside parsed objects (captures the candidate text and error message for every
+  JSON parse failure instead of swallowing them silently). `streamStudents()` now
+  accumulates `stopReason`, `parsedCount`, `parseErrors[]`, and `rawOutputTail` into a
+  `debugInfo` state that is set after every generation run.
+
+- **`App.jsx`** — Destructures `debugInfo` from `useIndividualFeedback` and passes it
+  to `<IndividualFeedbackPanel>`.
+
+- **`IndividualFeedbackPanel.jsx`** — Adds a subtle "Show debug info" / "Hide debug
+  info" toggle link that appears after generation completes. When expanded, displays a
+  monospace panel showing: stop reason, students parsed, JSON error count with candidate
+  snippets, and the last 800 characters of raw API output. Allows teachers to identify
+  whether missing feedback is due to token truncation or a format error.
+
+- Version bumped to v0.26b in `App.jsx` and `LandingPage.jsx`.
+
 ## v0.26 — Streaming progressive rendering fixed (both panels)
 
 ### Root causes identified and fixed

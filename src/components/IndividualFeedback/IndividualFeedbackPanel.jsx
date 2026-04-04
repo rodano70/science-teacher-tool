@@ -16,6 +16,7 @@ export default function IndividualFeedbackPanel({
   feedbackError = '',
   feedbackSuccess,
   truncated,
+  debugInfo = null,
   onDownloadSuccess,
   onBack,
   onSwitchToWCF,
@@ -28,6 +29,7 @@ export default function IndividualFeedbackPanel({
 }) {
   const [activeFilter, setActiveFilter] = useState('all')
   const [threshold, setThreshold] = useState(60)
+  const [debugMode, setDebugMode] = useState(false)
 
   // editsRef holds the latest text for every completer, keyed by student name.
   // Writing here does not trigger re-renders; read synchronously on download.
@@ -261,6 +263,14 @@ export default function IndividualFeedbackPanel({
           cursor: pointer; transition: background-color 0.15s; white-space: nowrap; flex-shrink: 0;
         }
         .ifp-retry-btn:hover { background: #fef3c7; }
+        .ifp-debug-toggle {
+          background: none; border: none; padding: 0;
+          font-family: inherit; font-size: 12px; font-weight: 500;
+          color: var(--color-outline); cursor: pointer;
+          text-decoration: underline; text-underline-offset: 3px;
+          transition: color 0.15s;
+        }
+        .ifp-debug-toggle:hover { color: var(--color-on-surface-variant); }
       `}</style>
 
       {/* Hero title */}
@@ -408,6 +418,32 @@ export default function IndividualFeedbackPanel({
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>refresh</span>
               Retry {missingStudents.length} missing
             </button>
+          )}
+        </div>
+      )}
+
+      {/* Debug toggle + panel */}
+      {!feedbackLoading && debugInfo && (
+        <div style={styles.debugWrapper}>
+          <button
+            className="ifp-debug-toggle"
+            onClick={() => setDebugMode(m => !m)}
+            type="button"
+          >
+            {debugMode ? 'Hide debug info' : 'Show debug info'}
+          </button>
+          {debugMode && (
+            <pre style={styles.debugPanel}>{[
+              `Stop reason:     ${debugInfo.stopReason}`,
+              `Students parsed: ${debugInfo.parsedCount}`,
+              `JSON errors:     ${debugInfo.parseErrors.length}`,
+              ...debugInfo.parseErrors.map((e, i) =>
+                `  [${i}] ${e.error}\n       candidate: ${e.candidate}`
+              ),
+              '',
+              `Raw output tail:`,
+              debugInfo.rawOutputTail,
+            ].join('\n')}</pre>
           )}
         </div>
       )}
@@ -629,6 +665,22 @@ const styles = {
     fontSize: '14px',
     color: '#92400e',
     lineHeight: '1.5',
+  },
+  debugWrapper: { padding: '0 32px', marginBottom: '12px' },
+  debugPanel: {
+    marginTop: '8px',
+    padding: '14px 16px',
+    background: 'var(--color-surface-container-low)',
+    border: '1px solid var(--color-outline-variant)',
+    borderRadius: '8px',
+    fontSize: '11.5px',
+    fontFamily: 'monospace',
+    color: 'var(--color-on-surface-variant)',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+    lineHeight: '1.7',
+    maxHeight: '340px',
+    overflowY: 'auto',
   },
   cardList: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 32px 40px' },
   loadingBlock: {
