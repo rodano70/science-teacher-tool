@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import UploadPanel from './components/UploadPanel'
 import ClassFeedbackPanel from './components/ClassFeedback/ClassFeedbackPanel'
 import IndividualFeedbackPanel from './components/IndividualFeedback/IndividualFeedbackPanel'
@@ -6,8 +6,9 @@ import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
+import { computeFingerprint } from './utils/archiveUtils'
 
-function App({ onStepChange, onRegisterNavigate }) {
+function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, archive }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -30,6 +31,16 @@ function App({ onStepChange, onRegisterNavigate }) {
   // Which output panel is currently visible: null | 'wcf' | 'individual'
   const [activeOutput, setActiveOutput] = useState(null)
 
+  // ─── Archive integration ──────────────────────────────────────────────────
+
+  // Tracks the id of the entry saved for the current session (prevents duplicate saves)
+  const [archivedSessionId, setArchivedSessionId] = useState(null)
+  // Non-null when a duplicate fingerprint is detected — waits for user resolution
+  const [pendingDuplicate, setPendingDuplicate] = useState(null)
+  // Detects loading → false transitions
+  const prevWcfLoadingRef = useRef(false)
+  const prevFeedbackLoadingRef = useRef(false)
+
   // Wire stepper step index: null→0, wcf→1, individual→2, dashboard→3
   useEffect(() => {
     if (activeOutput === null) onStepChange?.(0)
@@ -47,6 +58,21 @@ function App({ onStepChange, onRegisterNavigate }) {
       else if (stepIndex === 3) setActiveOutput('dashboard')
     })
   }, [onRegisterNavigate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register load-from-archive function so AppPage can call it when restoring an entry.
+  useEffect(() => {
+    onRegisterLoadFromArchive?.((entry) => {
+      setExamBoard(entry.metadata.examBoard || '')
+      setSubject(entry.metadata.subject || '')
+      setTopic(entry.metadata.topic || '')
+      if (entry.wcfData) setWcfData(entry.wcfData)
+      if (entry.feedbackData) setFeedbackData(entry.feedbackData)
+      setArchivedSessionId(entry.id)
+      setPendingDuplicate(null)
+      if (entry.wcfData) setActiveOutput('wcf')
+      else if (entry.feedbackData) setActiveOutput('individual')
+    })
+  }, [onRegisterLoadFromArchive]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 
@@ -74,6 +100,65 @@ function App({ onStepChange, onRegisterNavigate }) {
 
     return response.json()
   }
+
+  // ─── Auto-save to archive ─────────────────────────────────────────────────
+
+  function buildArchiveParams(overrides = {}) {
+    const fp = computeFingerprint(studentData, questionTexts)
+    const studentCount = _summary?.studentCount ?? (studentData?.length ?? 0)
+    const averageScore = (_summary && _summary.classTotalMax > 0)
+      ? Math.round((_summary.classAverage / _summary.classTotalMax) * 100)
+      : null
+    return {
+      examBoard, subject, topic,
+      studentCount, averageScore,
+      fingerprint: fp,
+      wcfData: wcfData || null,
+      feedbackData: feedbackData || null,
+      ...overrides,
+    }
+  }
+
+  function attemptAutoSave(params) {
+    if (!archive || !studentData) return
+    const existing = archive.findByFingerprint(params.fingerprint)
+    if (existing) {
+      setPendingDuplicate({
+        matchedEntry: existing,
+        params,
+        nextVersion: Math.max(...archive.entries
+          .filter(e => e.groupId === existing.groupId)
+          .map(e => e.version)) + 1,
+      })
+    } else {
+      const id = archive.saveEntry(params)
+      setArchivedSessionId(id)
+    }
+  }
+
+  // Detect WCF loading → false (generation just completed)
+  useEffect(() => {
+    if (prevWcfLoadingRef.current && !wcfLoading && wcfData && studentData) {
+      if (archivedSessionId) {
+        archive?.updateEntry(archivedSessionId, { wcfData })
+      } else {
+        attemptAutoSave(buildArchiveParams({ wcfData }))
+      }
+    }
+    prevWcfLoadingRef.current = wcfLoading
+  }, [wcfLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect individual feedback loading → false (generation just completed)
+  useEffect(() => {
+    if (prevFeedbackLoadingRef.current && !feedbackLoading && feedbackData?.length > 0 && studentData) {
+      if (archivedSessionId) {
+        archive?.updateEntry(archivedSessionId, { feedbackData })
+      } else {
+        attemptAutoSave(buildArchiveParams({ feedbackData }))
+      }
+    }
+    prevFeedbackLoadingRef.current = feedbackLoading
+  }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared validation ────────────────────────────────────────────────────
 
@@ -198,6 +283,10 @@ function App({ onStepChange, onRegisterNavigate }) {
     setWcfData(null)
     setWcfError('')
     setActiveOutput(null)
+    setArchivedSessionId(null)
+    setPendingDuplicate(null)
+    prevWcfLoadingRef.current = false
+    prevFeedbackLoadingRef.current = false
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -239,6 +328,47 @@ function App({ onStepChange, onRegisterNavigate }) {
                 <div style={styles.errorBox} role="alert">
                   <span style={styles.errorIcon}>!</span>
                   {feedbackError}
+                </div>
+              )}
+
+              {/* Duplicate detection banner */}
+              {pendingDuplicate && (
+                <div style={styles.duplicateBanner}>
+                  <span className="material-symbols-outlined" style={styles.duplicateIcon}>info</span>
+                  <span style={styles.duplicateText}>
+                    This assessment was already archived on{' '}
+                    <strong>{new Date(pendingDuplicate.matchedEntry.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>.
+                    What would you like to do?
+                  </span>
+                  <button
+                    style={styles.duplicateBtnPrimary}
+                    onClick={() => {
+                      archive.replaceEntry(pendingDuplicate.matchedEntry.id, {
+                        wcfData: pendingDuplicate.params.wcfData,
+                        feedbackData: pendingDuplicate.params.feedbackData,
+                      })
+                      setArchivedSessionId(pendingDuplicate.matchedEntry.id)
+                      setPendingDuplicate(null)
+                    }}
+                  >
+                    Replace existing
+                  </button>
+                  <button
+                    style={styles.duplicateBtnSecondary}
+                    onClick={() => {
+                      const id = archive.saveEntryAsVersion({
+                        matchedEntry: pendingDuplicate.matchedEntry,
+                        ...pendingDuplicate.params,
+                      })
+                      setArchivedSessionId(id)
+                      setPendingDuplicate(null)
+                    }}
+                  >
+                    Save as v{pendingDuplicate.nextVersion}
+                  </button>
+                  <button style={styles.duplicateBtnSkip} onClick={() => setPendingDuplicate(null)}>
+                    Skip
+                  </button>
                 </div>
               )}
 
@@ -328,7 +458,7 @@ function App({ onStepChange, onRegisterNavigate }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.26c</p>
+      <p style={styles.version}>v0.27</p>
     </>
   )
 }
@@ -364,6 +494,62 @@ const styles = {
     fontWeight: '500',
     color: 'var(--color-primary)',
     cursor: 'pointer',
+  },
+  duplicateBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    margin: '0 48px 16px',
+    padding: '12px 16px',
+    backgroundColor: '#fffbeb',
+    border: '1px solid #fcd34d',
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: '#92400e',
+    flexWrap: 'wrap',
+  },
+  duplicateIcon: {
+    fontSize: '18px',
+    flexShrink: 0,
+    color: '#d97706',
+  },
+  duplicateText: {
+    flex: 1,
+    lineHeight: '1.4',
+    minWidth: '160px',
+  },
+  duplicateBtnPrimary: {
+    padding: '6px 12px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--color-on-primary)',
+    backgroundColor: 'var(--color-primary)',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  },
+  duplicateBtnSecondary: {
+    padding: '6px 12px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: 'var(--color-primary)',
+    backgroundColor: 'var(--color-primary-container)',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  },
+  duplicateBtnSkip: {
+    padding: '6px 8px',
+    fontSize: '12px',
+    color: '#92400e',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   errorBox: {
     display: 'flex',
