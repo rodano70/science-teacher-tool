@@ -37,6 +37,7 @@ export function usePdfExtraction() {
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
           'anthropic-dangerous-direct-browser-access': 'true',
+          'anthropic-beta': 'pdfs-2024-09-25',
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
