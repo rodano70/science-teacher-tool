@@ -37,5 +37,11 @@ export async function runStream(response, onText, onStopReason) {
         onText('')  // signal end-of-stream so callers can drain their buffers
       }
     }
+
+    // Yield to the browser's task queue so it can repaint between chunks.
+    // Without this, consecutive reader.read() calls that resolve from the
+    // ReadableStream's internal buffer chain as microtasks with no macrotask
+    // boundary, and the browser never gets a paint opportunity mid-stream.
+    await new Promise(r => setTimeout(r, 0))
   }
 }
