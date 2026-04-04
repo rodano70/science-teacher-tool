@@ -76,8 +76,7 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 
-  async function callClaude(systemPrompt, userPrompt, maxTokens) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+  async function callClaude(systemPrompt, userPrompt, maxTokens) {    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
@@ -100,65 +99,6 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
 
     return response.json()
   }
-
-  // ─── Auto-save to archive ─────────────────────────────────────────────────
-
-  function buildArchiveParams(overrides = {}) {
-    const fp = computeFingerprint(studentData, questionTexts)
-    const studentCount = _summary?.studentCount ?? (studentData?.length ?? 0)
-    const averageScore = (_summary && _summary.classTotalMax > 0)
-      ? Math.round((_summary.classAverage / _summary.classTotalMax) * 100)
-      : null
-    return {
-      examBoard, subject, topic,
-      studentCount, averageScore,
-      fingerprint: fp,
-      wcfData: wcfData || null,
-      feedbackData: feedbackData || null,
-      ...overrides,
-    }
-  }
-
-  function attemptAutoSave(params) {
-    if (!archive || !studentData) return
-    const existing = archive.findByFingerprint(params.fingerprint)
-    if (existing) {
-      setPendingDuplicate({
-        matchedEntry: existing,
-        params,
-        nextVersion: Math.max(...archive.entries
-          .filter(e => e.groupId === existing.groupId)
-          .map(e => e.version)) + 1,
-      })
-    } else {
-      const id = archive.saveEntry(params)
-      setArchivedSessionId(id)
-    }
-  }
-
-  // Detect WCF loading → false (generation just completed)
-  useEffect(() => {
-    if (prevWcfLoadingRef.current && !wcfLoading && wcfData && studentData) {
-      if (archivedSessionId) {
-        archive?.updateEntry(archivedSessionId, { wcfData })
-      } else {
-        attemptAutoSave(buildArchiveParams({ wcfData }))
-      }
-    }
-    prevWcfLoadingRef.current = wcfLoading
-  }, [wcfLoading]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Detect individual feedback loading → false (generation just completed)
-  useEffect(() => {
-    if (prevFeedbackLoadingRef.current && !feedbackLoading && feedbackData?.length > 0 && studentData) {
-      if (archivedSessionId) {
-        archive?.updateEntry(archivedSessionId, { feedbackData })
-      } else {
-        attemptAutoSave(buildArchiveParams({ feedbackData }))
-      }
-    }
-    prevFeedbackLoadingRef.current = feedbackLoading
-  }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared validation ────────────────────────────────────────────────────
 
@@ -246,6 +186,67 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
 
   const _summary = studentData ? computeClassSummary(studentData) : null
+
+  // ─── Auto-save to archive ─────────────────────────────────────────────────
+  // These must live after the hook calls above so wcfLoading/feedbackLoading
+  // are declared before they appear in useEffect dependency arrays.
+
+  function buildArchiveParams(overrides = {}) {
+    const fp = computeFingerprint(studentData, questionTexts)
+    const studentCount = _summary?.studentCount ?? (studentData?.length ?? 0)
+    const averageScore = (_summary && _summary.classTotalMax > 0)
+      ? Math.round((_summary.classAverage / _summary.classTotalMax) * 100)
+      : null
+    return {
+      examBoard, subject, topic,
+      studentCount, averageScore,
+      fingerprint: fp,
+      wcfData: wcfData || null,
+      feedbackData: feedbackData || null,
+      ...overrides,
+    }
+  }
+
+  function attemptAutoSave(params) {
+    if (!archive || !studentData) return
+    const existing = archive.findByFingerprint(params.fingerprint)
+    if (existing) {
+      setPendingDuplicate({
+        matchedEntry: existing,
+        params,
+        nextVersion: Math.max(...archive.entries
+          .filter(e => e.groupId === existing.groupId)
+          .map(e => e.version)) + 1,
+      })
+    } else {
+      const id = archive.saveEntry(params)
+      setArchivedSessionId(id)
+    }
+  }
+
+  // Detect WCF loading → false (generation just completed)
+  useEffect(() => {
+    if (prevWcfLoadingRef.current && !wcfLoading && wcfData && studentData) {
+      if (archivedSessionId) {
+        archive?.updateEntry(archivedSessionId, { wcfData })
+      } else {
+        attemptAutoSave(buildArchiveParams({ wcfData }))
+      }
+    }
+    prevWcfLoadingRef.current = wcfLoading
+  }, [wcfLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect individual feedback loading → false (generation just completed)
+  useEffect(() => {
+    if (prevFeedbackLoadingRef.current && !feedbackLoading && feedbackData?.length > 0 && studentData) {
+      if (archivedSessionId) {
+        archive?.updateEntry(archivedSessionId, { feedbackData })
+      } else {
+        attemptAutoSave(buildArchiveParams({ feedbackData }))
+      }
+    }
+    prevFeedbackLoadingRef.current = feedbackLoading
+  }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const questionStats = _summary
     ? _summary.questions.map(q => ({
