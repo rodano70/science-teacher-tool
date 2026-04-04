@@ -7,7 +7,7 @@
  * Zone 4 — Teaching Implications → ImplicationsZone
  * Zone 5 — Performance Analytics → PerformanceDashboard
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import DiagnosisZone from './DiagnosisZone'
 import ImplicationsZone from './ImplicationsZone'
 import PerformanceDashboard from './PerformanceDashboard'
@@ -39,7 +39,7 @@ export default function ClassFeedbackPanel({
   const SECTION_KEYS_ALL = ['key_successes', 'key_misconceptions', 'individual_concerns', 'little_errors', 'students_to_praise', 'long_term_implications', 'immediate_action']
   const sectionsReceived = data ? SECTION_KEYS_ALL.filter(k => data[k] !== undefined).length : 0
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (data) setEditedData(data)
   }, [data])
 

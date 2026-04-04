@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.26 — Streaming progressive rendering fixed (both panels)
+
+### Root causes identified and fixed
+
+- **Class Feedback panel — zones empty during streaming**: `ClassFeedbackPanel`
+  maintains an `editedData` state (a user-editable copy of the API data) that was
+  synchronised with `data` via `useEffect`. Because `useEffect` is deferred — it
+  runs *after* the browser paints — `editedData` was always one full paint cycle
+  behind `data` during streaming. All seven section zones render from `editedData`,
+  so they stayed empty while `wcfData` accumulated via `flushSync`. The fix is
+  replacing `useEffect` with `useLayoutEffect`: layout effects fire synchronously
+  inside the `flushSync` commit cycle (before the browser paints), so `editedData`
+  is updated in the same frame as each incoming section.
+
+- **Both panels — no repaint between SSE chunks**: `streamUtils.js` consumed each
+  `reader.read()` result entirely inside the microtask continuation, then called
+  `reader.read()` again. When the ReadableStream's internal buffer already held
+  data, subsequent reads resolved immediately as queued microtasks — forming an
+  unbroken microtask chain. The browser can only repaint between *macrotasks*, so
+  no intermediate frames were produced. The fix adds
+  `await new Promise(r => setTimeout(r, 0))` after each chunk's SSE line loop,
+  introducing a macrotask boundary that allows the browser to paint the latest
+  `flushSync`-committed state before processing the next chunk.
+
+### Changes
+- `ClassFeedbackPanel.jsx` — `useEffect` → `useLayoutEffect` for `editedData` sync
+- `streamUtils.js` — macrotask yield (`setTimeout(0)`) after each chunk loop
+- Version bumped to v0.26 in `App.jsx` and `LandingPage.jsx`
+
 ## v0.25 — Streaming fixed, individual feedback reliability improvements
 
 ### Streaming fixes (restores behaviour from v0.23e, broken by v0.24 refactor)

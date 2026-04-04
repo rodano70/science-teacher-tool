@@ -326,7 +326,7 @@ function App({ onStepChange, onRegisterNavigate }) {
         </div>
       </main>
 
-      <p style={styles.version}>v0.25</p>
+      <p style={styles.version}>v0.26</p>
     </>
   )
 }
