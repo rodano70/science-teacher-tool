@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.26c — Tool use API, client-side non-completers, parallel batching
+
+### Changes
+
+- **`src/utils/streamUtils.js`** — Added `runToolStream`, a new SSE transport for Anthropic tool-use streaming. Handles `content_block_start` / `input_json_delta` / `content_block_stop` events, accumulating each tool call's JSON input and firing `onToolInput(parsedInput)` when the block closes. `runStream` is unchanged and still used by WCF.
+
+- **`src/hooks/useIndividualFeedback.js`** — Three reliability improvements:
+  1. **Client-side non-completers (Change A):** After extracting students, non-completers (`total === 0`) are immediately seeded into `feedbackData` as `{ name, isNonCompleter: true }` objects before any API call. Only completers are sent to Claude. `buildStudentList` simplified — no conditional for non-completers.
+  2. **Tool use API (Change C):** `streamStudents` now uses the Anthropic tool use API with `FEEDBACK_TOOL` schema and `tool_choice: { type: 'any' }`, replacing the raw JSON streaming approach. Format drift is structurally prevented. `extractJsonObjects` removed. `debugInfo` now only tracks `stopReason` and `parsedCount`.
+  3. **Parallel batching (Change B):** Completers are split into batches of 12 (`BATCH_SIZE`) and all batches are dispatched in parallel via `Promise.all`. Prompt-building extracted to `buildUserPrompt(studentList)` helper reused by both generation and retry.
+
+- **`src/components/IndividualFeedback/IndividualFeedbackPanel.jsx`** — Debug panel updated to show only `stopReason` and `parsedCount` (removed `parseErrors` and `rawOutputTail` sections).
+
+- **`src/App.jsx`**, **`src/pages/LandingPage.jsx`** — Version bumped to v0.26c.
+
 ## v0.26b — Debug toggle for missing individual feedbacks
 
 ### Root cause analysis
