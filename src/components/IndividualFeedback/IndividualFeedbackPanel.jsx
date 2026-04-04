@@ -436,13 +436,6 @@ export default function IndividualFeedbackPanel({
             <pre style={styles.debugPanel}>{[
               `Stop reason:     ${debugInfo.stopReason}`,
               `Students parsed: ${debugInfo.parsedCount}`,
-              `JSON errors:     ${debugInfo.parseErrors.length}`,
-              ...debugInfo.parseErrors.map((e, i) =>
-                `  [${i}] ${e.error}\n       candidate: ${e.candidate}`
-              ),
-              '',
-              `Raw output tail:`,
-              debugInfo.rawOutputTail,
             ].join('\n')}</pre>
           )}
         </div>

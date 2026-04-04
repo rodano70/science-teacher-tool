@@ -3,66 +3,39 @@ import { flushSync } from 'react-dom'
 import { extractStudentsForFeedback } from '../classUtils'
 import { downloadFeedbackDoc } from '../utils/docUtils'
 import { useProgressSimulation } from './useProgressSimulation'
-import { runStream } from '../utils/streamUtils'
+import { runToolStream } from '../utils/streamUtils'
 
 const SYSTEM_PROMPT = `You are a feedback assistant generating written feedback for UK secondary science students based on their assessment results.  For each student, write three sections: WWW (What Went Well), EBI (Even Better If), and To Improve.  FEEDBACK RULES — follow these precisely:  WWW must identify a specific strength tied to what the student actually did — never generic praise like "well done" or "good effort." Name the concept or question where they demonstrated understanding.  EBI must be constructive and forward-looking, phrased tentatively: "Even better if you had explained why…" or "Even better if you had connected this to…" It should address the reasoning or method behind the error, not just the wrong answer. Where possible, connect the gap to the underlying concept that transfers beyond this specific question.  To Improve must contain one concrete, specific action the student can take immediately — a question to attempt, a concept to revisit, a sentence to rewrite, or a comparison to make. It must be something genuinely doable, not a vague instruction like "revise this topic."  ALWAYS write at the level of subject process — connect errors to the reasoning or method involved, not just the mark. A student who got Q4 wrong needs to understand what went wrong in their thinking, not just that Q4 was incorrect.  Frame errors as information about learning, not failure. Use tentative, constructive language for areas of development. Never compare students to each other. Never comment on the student as a person ("you're clearly capable," "you need to try harder"). Never use hollow praise.  If question text is provided, you must reference the specific concept, term, or idea from that question — do not refer to questions by number alone. Feedback that names the misconception is always more useful than feedback that does not.  Keep each section to 1–3 sentences. Do not exceed this. `
 
-// Extract complete, top-level JSON objects from a streaming text buffer.
-// Uses brace counting and handles strings/escapes correctly — more robust than
-// line-by-line splitting, which breaks when Claude's output contains literal
-// newlines inside string values.
-// Returns { objects: Array<object>, remaining: string, errors: Array<{candidate,error}> }
-function extractJsonObjects(buffer) {
-  const objects = []
-  const errors = []
-  let i = 0
+// Tool definition for structured per-student feedback output.
+const FEEDBACK_TOOL = {
+  name: 'submit_student_feedback',
+  description: 'Submit personalised WWW / EBI / To Improve feedback for one student who completed the assessment.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      name:       { type: 'string',  description: "Student name as 'Surname, Firstname'" },
+      total:      { type: 'integer', description: 'Raw score achieved' },
+      maxTotal:   { type: 'integer', description: 'Maximum possible score' },
+      www:        { type: 'string',  description: 'What Went Well — specific strength tied to what the student actually did' },
+      ebi:        { type: 'string',  description: 'Even Better If — constructive, forward-looking, phrased tentatively' },
+      to_improve: { type: 'string',  description: 'To Improve — one concrete, immediately doable action' },
+    },
+    required: ['name', 'total', 'maxTotal', 'www', 'ebi', 'to_improve'],
+  },
+}
 
-  while (i < buffer.length) {
-    const start = buffer.indexOf('{', i)
-    if (start === -1) break
+const BATCH_SIZE = 12
 
-    let depth = 0
-    let inString = false
-    let escaped = false
-    let end = -1
-
-    for (let j = start; j < buffer.length; j++) {
-      const c = buffer[j]
-      if (escaped) { escaped = false; continue }
-      if (c === '\\' && inString) { escaped = true; continue }
-      if (c === '"') { inString = !inString; continue }
-      if (inString) continue
-      if (c === '{') depth++
-      else if (c === '}') {
-        depth--
-        if (depth === 0) { end = j; break }
-      }
-    }
-
-    if (end === -1) {
-      return { objects, remaining: buffer.slice(start), errors }
-    }
-
-    const candidate = buffer.slice(start, end + 1)
-    try {
-      const parsed = JSON.parse(candidate)
-      objects.push(parsed)
-    } catch (e) {
-      // Balanced braces but invalid JSON — skip past this opening brace
-      errors.push({ candidate: candidate.slice(0, 120), error: e.message })
-    }
-    i = end + 1
-  }
-
-  return { objects, remaining: '', errors }
+function chunkArray(arr, size) {
+  const out = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
 }
 
 function buildStudentList(students) {
   return students
-    .map(s => s.completed !== false && s.total > 0
-      ? `${s.name} [completed: true] — ${s.total}/${s.maxTotal} — ${s.breakdown}`
-      : `${s.name} [completed: false]`
-    )
+    .map(s => `${s.name} — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
     .join('\n')
 }
 
@@ -110,6 +83,8 @@ export function useIndividualFeedback({
         max_tokens: 16000,
         stream: true,
         system: SYSTEM_PROMPT,
+        tools: [FEEDBACK_TOOL],
+        tool_choice: { type: 'any' },
         messages: promptMessages,
       }),
     })
@@ -119,24 +94,14 @@ export function useIndividualFeedback({
       throw new Error(`API error ${response.status}: ${errBody}`)
     }
 
-    let jsonBuffer = ''
-    let rawOutput = ''
     let stopReason = null
     let parsedCount = 0
-    const parseErrors = []
 
-    await runStream(
+    await runToolStream(
       response,
-      chunk => {
-        rawOutput += chunk
-        jsonBuffer += chunk
-        const { objects, remaining, errors } = extractJsonObjects(jsonBuffer)
-        jsonBuffer = remaining
-        for (const e of errors) parseErrors.push(e)
-        for (const obj of objects) {
-          parsedCount++
-          appendStudent(obj)
-        }
+      input => {
+        parsedCount++
+        appendStudent(input)
       },
       reason => {
         stopReason = reason
@@ -144,22 +109,28 @@ export function useIndividualFeedback({
       }
     )
 
-    // Final parse of anything left in the buffer
-    if (jsonBuffer.trim()) {
-      const { objects, errors } = extractJsonObjects(jsonBuffer)
-      for (const e of errors) parseErrors.push(e)
-      for (const obj of objects) {
-        parsedCount++
-        appendStudent(obj)
-      }
-    }
-
     setDebugInfo({
       stopReason: stopReason ?? 'end_turn',
       parsedCount,
-      parseErrors,
-      rawOutputTail: rawOutput.length > 800 ? '…' + rawOutput.slice(-800) : rawOutput,
     })
+  }
+
+  function buildUserPrompt(studentList) {
+    const questionBlock = questionTexts.length > 0
+      ? '\nQuestion paper: ' + questionTexts.map((t, i) => `Q${i + 1}: ${t}`).join(' ')
+      : ''
+
+    return `Exam Board: ${examBoard}
+Subject: ${subject}
+Topic: ${topic}
+${gradeBoundaries ? `Grade Boundaries: ${gradeBoundaries}\n` : ''}${questionBlock}
+
+Call submit_student_feedback once for every student listed below.
+Student data (Name — Total score — Per-question breakdown where 1=correct 0=incorrect):
+${studentList}
+
+Generate personalised WWW / EBI / To Improve feedback for every student.
+Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
   }
 
   async function handleGenerateFeedback() {
@@ -170,45 +141,39 @@ export function useIndividualFeedback({
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
 
-    setFeedbackData([])
-
     const rawStudents = extractStudentsForFeedback(studentData)
     if (!rawStudents || rawStudents.length === 0) {
       setFeedbackError('Could not extract student data from the uploaded file.')
       return
     }
 
-    const students = rawStudents.map(s => ({ ...s, completed: s.total > 0 }))
-    const studentList = buildStudentList(students)
+    const completers = rawStudents.filter(s => s.total > 0)
+    const nonCompleters = rawStudents.filter(s => s.total === 0)
 
-    const questionBlock = questionTexts.length > 0
-      ? '\nQuestion paper: ' + questionTexts.map((t, i) => `Q${i + 1}: ${t}`).join(' ')
-      : ''
-
-    const userPrompt = `Exam Board: ${examBoard}
-Subject: ${subject}
-Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}${questionBlock}
-
-Student data (Name — Total score — Per-question scores where 1=correct 0=incorrect):
-${studentList}
-
-Output each student on its own line as a standalone JSON object with no array wrapper, no pretty-printing, no markdown fences, and no text before or after the JSON lines. Each line must be a complete, parseable JSON object. Use this shape for completers:
-{"name":"Surname, Firstname","total":<number>,"maxTotal":<number>,"www":"...","ebi":"...","to_improve":"..."}
-and this shape for non-completers:
-{"name":"Surname, Firstname","isNonCompleter":true}
-Output students in alphabetical order by surname.
-
-Generate personalised WWW / EBI / To Improve feedback for every student who completed the work. Use the student's name in the feedback. Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
+    // Seed feedbackData with client-built non-completer objects immediately
+    const nonCompleterObjects = nonCompleters.map(s => ({ name: s.name, isNonCompleter: true }))
+    setFeedbackData(nonCompleterObjects)
 
     setTruncated(false)
     startProgress()
     setFeedbackLoading(true)
 
     try {
-      await streamStudents(
-        [{ role: 'user', content: userPrompt }],
-        () => setTruncated(true)
+      const batches = chunkArray(completers, BATCH_SIZE)
+      let anyTruncated = false
+
+      await Promise.all(
+        batches.map(batch => {
+          const studentList = buildStudentList(batch)
+          const userPrompt = buildUserPrompt(studentList)
+          return streamStudents(
+            [{ role: 'user', content: userPrompt }],
+            () => { anyTruncated = true }
+          )
+        })
       )
+
+      if (anyTruncated) setTruncated(true)
     } catch (err) {
       if (err instanceof SyntaxError) {
         setFeedbackError('The AI returned an unexpected format. Please try again.')
@@ -230,7 +195,7 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
     setFeedbackLoading(true)
 
     const studentList = missingStudents
-      .map(s => `${s.name} [completed: true] — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
+      .map(s => `${s.name} — ${s.total}/${s.maxTotal} — ${s.breakdown}`)
       .join('\n')
 
     const questionBlock = questionTexts.length > 0
@@ -239,14 +204,12 @@ Generate personalised WWW / EBI / To Improve feedback for every student who comp
 
     const userPrompt = `Exam Board: ${examBoard}
 Subject: ${subject}
-Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''}${questionBlock}
+Topic: ${topic}
+${gradeBoundaries ? `Grade Boundaries: ${gradeBoundaries}\n` : ''}${questionBlock}
 
-The following students were missing from a previous feedback run. Generate feedback only for these students:
+The following students were missing from a previous feedback run. Call submit_student_feedback once for each student listed below.
+Student data (Name — Total score — Per-question breakdown where 1=correct 0=incorrect):
 ${studentList}
-
-Output each student on its own line as a standalone JSON object. Use this shape:
-{"name":"Surname, Firstname","total":<number>,"maxTotal":<number>,"www":"...","ebi":"...","to_improve":"..."}
-No preamble, no markdown fences, no extra text.
 
 Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 

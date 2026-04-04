@@ -46,7 +46,7 @@ src/
 │   └── useAutoSizeTextarea.js   # Auto-resize textarea ref helper
 └── utils/
     ├── docUtils.js     # Generates .docx download via `docx` library
-    └── streamUtils.js  # Shared SSE streaming transport (used by WCF + individual hooks)
+    └── streamUtils.js  # SSE streaming transport: runStream (text streaming, WCF) + runToolStream (tool use streaming, individual feedback)
 ```
 
 ## 3. Critical Workflows
@@ -83,6 +83,10 @@ All AI calls use raw `fetch` with headers `x-api-key`,
 `anthropic-dangerous-direct-browser-access`, and `anthropic-version: 2023-06-01`.
 Use `claude-sonnet-4-6` for generation (streaming SSE), `claude-haiku-4-5-20251001`
 for extraction (low tokens). Do not add an Anthropic SDK dependency.
+Individual feedback uses the Anthropic tool use API (`tool_choice: { type: 'any' }` with
+`FEEDBACK_TOOL` schema); `runToolStream` in `streamUtils.js` handles `input_json_delta`
+events and fires `onToolInput(parsedInput)` for each complete tool call block.
+WCF still uses plain text streaming via `runStream`.
 
 **S4 — Asymptotic progress bars.**
 Long async operations animate progress with `setInterval` at 250 ms:
