@@ -1,5 +1,57 @@
 # Changelog
 
+## v0.27 — Assessment Archive with localStorage persistence
+
+### New features
+
+- **Assessment Archive section** accessible from the sidebar Library nav (Archive item). All generated WCF and individual feedback is auto-saved to browser `localStorage` (`'science_teacher_archive'`) after each generation completes, using a `useRef`-based loading→false transition detector.
+
+- **Duplicate detection**: a djb2 fingerprint of the marks sheet + question texts detects if the same assessment has already been archived. When a match is found, an inline amber banner appears with three options:
+  - **Replace existing** — overwrites the matched entry in place.
+  - **Save as new version** — creates a linked entry with integer versioning (v1, v2, v3…). A `groupId` UUID groups all versions of the same assessment; the table shows a version badge for entries with `version > 1`.
+  - **Skip** — dismisses the banner without saving.
+
+- **ArchivePanel** (`src/components/Archive/ArchivePanel.jsx`): full-featured list view with:
+  - Free-text search (topic / subject / exam board)
+  - Subject dropdown filter + sort dropdown (Newest / Oldest / Highest avg / Most students)
+  - Paginated table (10/page) with columns: Date, Topic, Subject·ExamBoard, Students, Avg%, WCF ✓, Individual ✓, Version, Actions
+  - Per-row actions: View, Download WCF Doc, Download Individual Doc, Load into session, Delete (with inline confirmation)
+  - Bulk-select with page-level select-all checkbox → "Delete selected" with inline confirmation
+  - Export archive as JSON download
+  - Import JSON (merges without duplicates by `id`)
+  - Import success/error banners (auto-dismiss)
+  - Storage usage bar (KB used); amber warning when approaching 4 MB
+  - Empty state with explanation copy
+
+- **ArchiveViewer** (`src/components/Archive/ArchiveViewer.jsx`): read-only archived feedback view with:
+  - Metadata header: topic title, chips for exam board, subject, date, student count, average %, version badge
+  - WCF zones rendered as collapsible sections (Key Successes, Misconceptions, Surface Errors, Praise, Concerns, Immediate Action, Long-term Implications)
+  - Individual feedback as collapsible student rows (All / No submission / Completed filter pills)
+  - Re-download WCF Doc and Individual Doc buttons (via existing `docUtils.js`)
+  - **Load into session** button: restores archived `wcfData`/`feedbackData` and metadata back into the live tool for further editing (without re-generating via Claude)
+  - **Notes editor**: per-entry free-text annotation (saved to localStorage via `updateNotes`)
+
+- **Archive count badge** on Archive sidebar nav item showing total number of stored entries.
+
+- **AppShell** now hides the stepper bar and changes the top-bar subtitle to "Assessment Archive" when in archive view.
+
+### Changed
+
+- **`src/App.jsx`** — accepts `archive` prop and `onRegisterLoadFromArchive` prop; adds `archivedSessionId` + `pendingDuplicate` state; adds two `useEffect`s for auto-save on generation completion; adds `pendingDuplicate` banner to upload page; version bumped to v0.27.
+- **`src/pages/AppPage.jsx`** — hoists `useArchive()`; adds `view: 'tool' | 'archive'` state; manages `viewingEntry` for ArchiveViewer navigation; wires `onArchiveClick`, `archiveActive`, `archiveCount`, `showStepper` to AppShell.
+- **`src/components/AppShell.jsx`** — accepts `onArchiveClick`, `archiveActive`, `archiveCount`, `showStepper` props; Archive nav item is now clickable with active/filled icon state and count badge.
+- **`src/pages/LandingPage.jsx`** — version bumped to v0.27.
+- **`CLAUDE.md`** — updated Architecture Map and Key Constraints with archive files and PII/fingerprint constraints.
+
+### New files
+
+- `src/hooks/useArchive.js` — `localStorage` CRUD: `saveEntry`, `saveEntryAsVersion`, `replaceEntry`, `updateEntry`, `updateNotes`, `deleteEntry`, `deleteEntries`, `findByFingerprint`, `exportArchive`, `importArchive`, `storageKB`.
+- `src/utils/archiveUtils.js` — `computeFingerprint(studentData, questionTexts)` using djb2 hash.
+- `src/components/Archive/ArchivePanel.jsx`
+- `src/components/Archive/ArchiveViewer.jsx`
+
+---
+
 ## v0.26c — Tool use API, client-side non-completers, parallel batching
 
 ### Changes

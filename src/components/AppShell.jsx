@@ -2,7 +2,7 @@
 
 const SIDEBAR_WIDTH = 220
 
-export default function AppShell({ children, onReset, activeStep = 0, onStepClick }) {
+export default function AppShell({ children, onReset, activeStep = 0, onStepClick, onArchiveClick, onBack, archiveActive = false, archiveCount = 0, showStepper = true }) {
   return (
     <div style={styles.root}>
 
@@ -17,8 +17,15 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
           <p style={styles.navSectionLabel}>TOOLS</p>
           <p style={styles.navSectionSubLabel}>Academic Curator</p>
 
-          {/* Active item */}
-          <div style={styles.navItemActive}>
+          {/* Science Feedback — clickable when archive is active to return to tool */}
+          <div
+            style={archiveActive ? styles.navItemInactive : styles.navItemActive}
+            onClick={archiveActive ? onBack : undefined}
+            role={archiveActive ? 'button' : undefined}
+            tabIndex={archiveActive ? 0 : undefined}
+            onKeyDown={archiveActive ? (e => e.key === 'Enter' && onBack?.()) : undefined}
+            title={archiveActive ? 'Back to Science Feedback' : undefined}
+          >
             <span className="material-symbols-outlined" style={styles.navItemIconMs}>biotech</span>
             <span style={styles.navItemLabel}>Science Feedback</span>
           </div>
@@ -46,9 +53,25 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
             <span style={styles.navItemLabel}>Library</span>
           </div>
 
-          <div style={styles.navItemInactive}>
-            <span className="material-symbols-outlined" style={styles.navItemIconMs}>inventory_2</span>
+          <div
+            style={archiveActive ? styles.navItemActive : styles.navItemInactive}
+            onClick={onArchiveClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => e.key === 'Enter' && onArchiveClick?.()}
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ ...styles.navItemIconMs, fontVariationSettings: archiveActive ? "'FILL' 1" : "'FILL' 0" }}
+            >
+              inventory_2
+            </span>
             <span style={styles.navItemLabel}>Archive</span>
+            {archiveCount > 0 && (
+              <span style={archiveActive ? styles.countBadgeActive : styles.countBadge}>
+                {archiveCount > 99 ? '99+' : archiveCount}
+              </span>
+            )}
           </div>
         </nav>
 
@@ -72,7 +95,9 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
           <header style={styles.topBar}>
             <div style={styles.topBarLeft}>
               <span style={styles.topBarWordmark}>TeacherDesk</span>
-              <span style={styles.topBarTool}>Science Feedback Tool</span>
+              <span style={styles.topBarTool}>
+                {archiveActive ? 'Assessment Archive' : 'Science Feedback Tool'}
+              </span>
             </div>
             <div style={styles.topBarRight}>
               <button style={styles.resetBtn} onClick={onReset}>Reset Session</button>
@@ -88,8 +113,8 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
             </div>
           </header>
 
-          {/* Stepper */}
-          <div style={styles.stepperBar}>
+          {/* Stepper — hidden in archive view */}
+          {showStepper && <div style={styles.stepperBar}>
             {steps.map((step, i) => {
               const isActive = i === activeStep
               return (
@@ -108,7 +133,7 @@ export default function AppShell({ children, onReset, activeStep = 0, onStepClic
                 </div>
               )
             })}
-          </div>
+          </div>}
 
         </div>{/* /stickyHeader */}
 
@@ -220,6 +245,28 @@ const styles = {
     fontSize: '12px',
     fontWeight: '500',
     color: 'var(--color-on-surface)',
+  },
+  countBadge: {
+    fontSize: '10px',
+    fontWeight: '600',
+    color: 'var(--color-on-surface-variant)',
+    backgroundColor: 'var(--color-surface-container-highest)',
+    padding: '2px 6px',
+    borderRadius: '10px',
+    letterSpacing: '0.02em',
+    minWidth: '18px',
+    textAlign: 'center',
+  },
+  countBadgeActive: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: 'var(--color-on-primary)',
+    backgroundColor: 'var(--color-primary)',
+    padding: '2px 6px',
+    borderRadius: '10px',
+    letterSpacing: '0.02em',
+    minWidth: '18px',
+    textAlign: 'center',
   },
   soonBadge: {
     fontSize: '10px',

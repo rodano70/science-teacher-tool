@@ -43,10 +43,19 @@ src/
 │   ├── useIndividualFeedback.js # Individual prompt + SSE streaming + state
 │   ├── usePdfExtraction.js      # PDF → question text via Claude Haiku
 │   ├── useProgressSimulation.js # Asymptotic progress animation (shared by all streaming hooks)
-│   └── useAutoSizeTextarea.js   # Auto-resize textarea ref helper
+│   ├── useAutoSizeTextarea.js   # Auto-resize textarea ref helper
+│   └── useArchive.js            # localStorage CRUD for assessment archive (key: 'science_teacher_archive')
 └── utils/
-    ├── docUtils.js     # Generates .docx download via `docx` library
-    └── streamUtils.js  # SSE streaming transport: runStream (text streaming, WCF) + runToolStream (tool use streaming, individual feedback)
+    ├── docUtils.js        # Generates .docx download via `docx` library
+    ├── streamUtils.js     # SSE streaming transport: runStream (WCF) + runToolStream (individual feedback)
+    └── archiveUtils.js    # computeFingerprint(studentData, questionTexts) — djb2 hash for duplicate detection
+```
+
+Archive components:
+```
+src/components/Archive/
+├── ArchivePanel.jsx   # List view: search, filter, sort, pagination, bulk delete, export/import
+└── ArchiveViewer.jsx  # Read-only feedback viewer; re-download docs; notes; load-into-session
 ```
 
 ## 3. Critical Workflows
@@ -107,3 +116,10 @@ styled red error box. No toast libraries.
   output panels. Maintain this invariant for any new output type.
 - The app has **no backend**. Never suggest server-side solutions.
 - No TypeScript. Keep all files as `.js` / `.jsx`.
+- Archive data lives in `localStorage` key `'science_teacher_archive'`. `useArchive`
+  is instantiated in `AppPage.jsx` (not `App.jsx`) so it persists across App remounts.
+- Archive entries contain student names (PII). They are stored **locally only** and
+  must **never** be sent to the Claude API.
+- Duplicate detection uses a djb2 fingerprint of the marks sheet + question texts.
+  When a duplicate is detected, show the `pendingDuplicate` banner and wait for
+  explicit user choice (replace / new version / skip) — never overwrite silently.
