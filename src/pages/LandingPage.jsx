@@ -76,7 +76,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer style={styles.footer}>
         <p style={styles.footerText}>© 2025 TeacherDesk</p>
-        <p style={styles.version}>v0.27b</p>
+        <p style={styles.version}>v0.28</p>
       </footer>
 
     </div>

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.28 — 2026-04-18
+
+### Fixes
+
+- **`setWcfData(null)` placement** (`src/hooks/useClassFeedback.js`): moved the `setWcfData(null)` call to after the `validateInputs()` guard in `handleGenerateWCF`, so a failed validation (e.g. blank subject) no longer wipes the user's existing WCF output.
+
+### Dead code removal (`src/App.jsx`)
+
+- Removed unused `callClaude` function (individual feedback has used its own `fetch` call since v0.21).
+- Removed unused `handleDownloadWordDoc` function.
+- Renamed `_summary` variable to remove the unused-variable prefix left after an earlier refactor.
+- Removed double-blank-line gaps left behind by the above removals.
+
+---
+
 ## v0.27 — Assessment Archive with localStorage persistence
 
 ### New features

@@ -81,10 +81,11 @@ export function useClassFeedback({
   async function handleGenerateWCF() {
     setActiveOutput('wcf')
     setWcfError('')
-    setWcfData(null)
 
     const err = validateInputs()
     if (err) { setWcfError(err); return }
+
+    setWcfData(null)
 
     const summary = computeClassSummary(studentData)
     if (!summary) {
