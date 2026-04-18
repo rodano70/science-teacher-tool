@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 import { useProgressSimulation } from './useProgressSimulation'
-import { runStream } from '../utils/streamUtils'
+import { runToolStream } from '../utils/streamUtils'
 
-const SECTION_KEYS = [
+// The seven sections of the Whole Class Feedback sheet. Order matches the
+// sequence the model is instructed to emit them in so the UI fills in visibly
+// top-to-bottom.
+const SECTIONS = [
   'key_successes',
   'key_misconceptions',
   'individual_concerns',
@@ -13,54 +16,29 @@ const SECTION_KEYS = [
   'immediate_action',
 ]
 
-// Extract complete, top-level JSON objects from a streaming text buffer.
-// Uses brace counting and handles strings with escaped characters correctly.
-// Returns { objects: Array<object>, remaining: string } where remaining is
-// any incomplete JSON fragment to keep in the buffer for the next chunk.
-function extractJsonObjects(buffer) {
-  const objects = []
-  let i = 0
-
-  while (i < buffer.length) {
-    // Fast-forward to the next opening brace
-    const start = buffer.indexOf('{', i)
-    if (start === -1) break
-
-    let depth = 0
-    let inString = false
-    let escaped = false
-    let end = -1
-
-    for (let j = start; j < buffer.length; j++) {
-      const c = buffer[j]
-      if (escaped) { escaped = false; continue }
-      if (c === '\\' && inString) { escaped = true; continue }
-      if (c === '"') { inString = !inString; continue }
-      if (inString) continue
-      if (c === '{') depth++
-      else if (c === '}') {
-        depth--
-        if (depth === 0) { end = j; break }
-      }
-    }
-
-    if (end === -1) {
-      // Incomplete object — keep from start onwards as the remaining buffer
-      return { objects, remaining: buffer.slice(start) }
-    }
-
-    const candidate = buffer.slice(start, end + 1)
-    try {
-      const parsed = JSON.parse(candidate)
-      objects.push(parsed)
-    } catch {
-      // Balanced braces but invalid JSON — skip past this opening brace
-    }
-    i = end + 1
-  }
-
-  return { objects, remaining: '' }
+// Tool the model calls once per section. `data` is an array of bullet strings
+// for every section except `immediate_action`, which is a single string.
+const SECTION_TOOL = {
+  name: 'submit_section',
+  description: 'Submit one completed section of the Whole Class Feedback sheet. Call this tool exactly seven times, once per section, in the documented order.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      section: {
+        type: 'string',
+        enum: SECTIONS,
+        description: 'Identifier of the section being submitted.',
+      },
+      data: {
+        description: 'For immediate_action this is a single string. For all other sections it is an array of short bullet strings.',
+      },
+    },
+    required: ['section', 'data'],
+  },
 }
+
+const SYSTEM_PROMPT =
+  'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a Whole Class Feedback sheet by calling the submit_section tool seven times, in this exact order: key_successes, key_misconceptions, individual_concerns, little_errors, students_to_praise, long_term_implications, immediate_action. Do not output any text between tool calls. For immediate_action, `data` is a single next-lesson action string. For every other section, `data` is an array of short bullet strings.'
 
 export function useClassFeedback({
   examBoard,
@@ -78,13 +56,10 @@ export function useClassFeedback({
   const { progress: wcfProgress, startProgress, completeProgress } = useProgressSimulation()
 
   async function handleGenerateWCF() {
-    setActiveOutput('wcf')
     setWcfError('')
 
     const err = validateInputs()
     if (err) { setWcfError(err); return }
-
-    setWcfData(null)
 
     const summary = computeClassSummary(studentData)
     if (!summary) {
@@ -92,8 +67,12 @@ export function useClassFeedback({
       return
     }
 
-    const summaryText = formatSummaryForPrompt(summary)
+    // Only switch views once inputs are verified, otherwise the user lands on
+    // an empty feedback page with the error tucked out of sight.
+    setActiveOutput('wcf')
+    setWcfData(null)
 
+    const summaryText = formatSummaryForPrompt(summary)
     const questionBlock = questionTexts.length > 0
       ? '\nQuestion paper: ' + questionTexts.map((t, i) => `Q${i + 1}: ${t}`).join(' ')
       : ''
@@ -105,18 +84,16 @@ Topic: ${topic}${gradeBoundaries ? `\nGrade Boundaries: ${gradeBoundaries}` : ''
 Class data summary:
 ${summaryText}
 
-Generate a Whole Class Feedback sheet. Output each section as a separate JSON object on its own line (NDJSON). No preamble, no markdown fences, no extra text.
+Call submit_section seven times in order:
+  1. key_successes            — bullets describing what the class understood
+  2. key_misconceptions       — bullets stating the misconception + reteach action
+  3. individual_concerns      — bullets formatted "Name: concern description"
+  4. little_errors            — bullets describing small surface mistakes
+  5. students_to_praise       — bullets formatted "Name — reason"
+  6. long_term_implications   — bullets describing SOW implications
+  7. immediate_action         — a single specific next-lesson action string
 
-Output exactly these seven objects in order:
-{"section":"key_successes","data":["bullet string","bullet string"]}
-{"section":"key_misconceptions","data":["misconception + reteach action","..."]}
-{"section":"individual_concerns","data":["Name: concern description","..."]}
-{"section":"little_errors","data":["small mistake description","..."]}
-{"section":"students_to_praise","data":["Name — reason","..."]}
-{"section":"long_term_implications","data":["SOW implication","..."]}
-{"section":"immediate_action","data":"one specific next-lesson action string"}
-
-Be specific and curriculum-relevant for ${examBoard} ${subject}.`
+Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
     startProgress()
     setWcfLoading(true)
@@ -132,9 +109,11 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
+          max_tokens: 6000,
           stream: true,
-          system: 'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a Whole Class Feedback sheet. Output each section as a JSON object on its own line (NDJSON format). Return only the JSON lines — no markdown, no preamble, no extra text.',
+          system: SYSTEM_PROMPT,
+          tools: [SECTION_TOOL],
+          tool_choice: { type: 'any' },
           messages: [{ role: 'user', content: userPrompt }],
         }),
       })
@@ -144,48 +123,15 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
         throw new Error(`API error ${response.status}: ${errBody}`)
       }
 
-      let jsonBuffer = ''
-
-      await runStream(response, chunk => {
-        jsonBuffer += chunk
-        const { objects, remaining } = extractJsonObjects(jsonBuffer)
-        jsonBuffer = remaining
-        for (const obj of objects) {
-          processWcfObject(obj)
-        }
+      await runToolStream(response, input => {
+        if (!input || !SECTIONS.includes(input.section)) return
+        setWcfData(prev => ({ ...(prev || {}), [input.section]: input.data }))
       })
-
-      // Final parse of anything left in the buffer
-      if (jsonBuffer.trim()) {
-        const { objects } = extractJsonObjects(jsonBuffer)
-        for (const obj of objects) {
-          processWcfObject(obj)
-        }
-      }
-
     } catch (err) {
       setWcfError(err.message)
     } finally {
       completeProgress()
       setWcfLoading(false)
-    }
-  }
-
-  // Handle a parsed JSON object from the stream.
-  // Uses flushSync so each section triggers an immediate React render,
-  // making sections appear on screen one by one as they arrive.
-  function processWcfObject(obj) {
-    if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
-      // NDJSON section: {"section":"key_successes","data":[...]}
-      setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
-    } else {
-      // Fallback: legacy single-object format with all sections as top-level keys
-      const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
-      if (found.length > 0) {
-        const patch = {}
-        found.forEach(k => { patch[k] = obj[k] })
-        setWcfData(prev => ({ ...(prev || {}), ...patch }))
-      }
     }
   }
 
