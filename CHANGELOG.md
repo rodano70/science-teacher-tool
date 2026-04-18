@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.28a — 2026-04-18
+
+### Fixes
+
+- **Debug info accumulation** (`src/hooks/useIndividualFeedback.js`): `streamStudents` now returns `{stopReason, parsedCount}` instead of calling `setDebugInfo` per batch. `handleGenerateFeedback` accumulates results across all batches and calls `setDebugInfo` once in the `finally` block, eliminating stale closure reads from multiple per-batch state updates.
+- **Truncated flag reset**: `setTruncated(false)` is now also called at the start of `handleRetryMissing`, so a truncated flag from a previous run cannot persist into a retry. `handleGenerateFeedback` already reset it; this closes the retry path.
+
+---
+
 ## v0.28 — 2026-04-18
 
 ### Fixes

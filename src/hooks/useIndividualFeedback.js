@@ -109,10 +109,7 @@ export function useIndividualFeedback({
       }
     )
 
-    setDebugInfo({
-      stopReason: stopReason ?? 'end_turn',
-      parsedCount,
-    })
+    return { stopReason: stopReason ?? 'end_turn', parsedCount }
   }
 
   function buildUserPrompt(studentList) {
@@ -158,11 +155,13 @@ Use the student's name in the feedback. Be specific and curriculum-relevant for 
     startProgress()
     setFeedbackLoading(true)
 
+    let batchResults = null
+
     try {
       const batches = chunkArray(completers, BATCH_SIZE)
       let anyTruncated = false
 
-      await Promise.all(
+      batchResults = await Promise.all(
         batches.map(batch => {
           const studentList = buildStudentList(batch)
           const userPrompt = buildUserPrompt(studentList)
@@ -181,6 +180,12 @@ Use the student's name in the feedback. Be specific and curriculum-relevant for 
         setFeedbackError(err.message)
       }
     } finally {
+      if (batchResults) {
+        setDebugInfo({
+          stopReason: batchResults[batchResults.length - 1]?.stopReason ?? 'end_turn',
+          parsedCount: batchResults.reduce((sum, r) => sum + r.parsedCount, 0),
+        })
+      }
       completeProgress()
       setFeedbackLoading(false)
     }
@@ -192,6 +197,7 @@ Use the student's name in the feedback. Be specific and curriculum-relevant for 
     if (!missingStudents || missingStudents.length === 0) return
 
     setFeedbackError('')
+    setTruncated(false)
     setFeedbackLoading(true)
 
     const studentList = missingStudents
@@ -215,14 +221,17 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
 
     startProgress()
 
+    let retryResult = null
+
     try {
-      await streamStudents(
+      retryResult = await streamStudents(
         [{ role: 'user', content: userPrompt }],
         null
       )
     } catch (err) {
       setFeedbackError(err.message)
     } finally {
+      if (retryResult) setDebugInfo(retryResult)
       completeProgress()
       setFeedbackLoading(false)
     }
