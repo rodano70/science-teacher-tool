@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { flushSync } from 'react-dom'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 import { useProgressSimulation } from './useProgressSimulation'
 import { runStream } from '../utils/streamUtils'
@@ -178,18 +177,14 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
   function processWcfObject(obj) {
     if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
       // NDJSON section: {"section":"key_successes","data":[...]}
-      flushSync(() => {
-        setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
-      })
+      setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
     } else {
       // Fallback: legacy single-object format with all sections as top-level keys
       const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
       if (found.length > 0) {
         const patch = {}
         found.forEach(k => { patch[k] = obj[k] })
-        flushSync(() => {
-          setWcfData(prev => ({ ...(prev || {}), ...patch }))
-        })
+        setWcfData(prev => ({ ...(prev || {}), ...patch }))
       }
     }
   }
