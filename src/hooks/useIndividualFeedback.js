@@ -228,10 +228,6 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
     }
   }
 
-  async function handleDownloadWordDoc() {
-    await downloadFeedbackDoc({ feedbackData, subject, topic, setFeedbackSuccess })
-  }
-
   return {
     feedbackData,
     setFeedbackData,
@@ -246,6 +242,5 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
     debugInfo,
     handleGenerateFeedback,
     handleRetryMissing,
-    handleDownloadWordDoc,
   }
 }
