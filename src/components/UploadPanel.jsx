@@ -12,6 +12,7 @@ export default function UploadPanel({
   gradeBoundaries, setGradeBoundaries,
   studentData,
   onDataParsed,
+  schemaStatus,
   onReset,
   pdfMeta,
   questionTexts,
@@ -81,6 +82,14 @@ export default function UploadPanel({
               </div>
             </div>
             <FileUpload onDataParsed={onDataParsed} studentData={studentData} />
+            {schemaStatus === 'detecting' && (
+              <p style={styles.schemaNote}>Analysing file structure&hellip;</p>
+            )}
+            {schemaStatus === 'ready' && (
+              <p style={{ ...styles.schemaNote, color: 'var(--color-primary)', fontStyle: 'normal' }}>
+                ✓ Format detected
+              </p>
+            )}
           </div>
 
           {/* Question Paper section */}
@@ -563,5 +572,12 @@ const styles = {
     fontSize: '13px',
     fontWeight: '500',
     cursor: 'pointer',
+  },
+
+  schemaNote: {
+    margin: '10px 0 0',
+    fontSize: '12px',
+    color: 'var(--color-outline)',
+    fontStyle: 'italic',
   },
 }
