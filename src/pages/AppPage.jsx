@@ -61,7 +61,18 @@ export default function AppPage() {
         archiveCount={archive.entries.length}
         showStepper={view === 'tool'}
       >
-        {view === 'archive' ? (
+        {/* App stays mounted at all times so studentData and form state survive
+            Archive navigation. display:none hides it while Archive is active. */}
+        <div style={{ display: view === 'archive' ? 'none' : undefined }}>
+          <App
+            key={appKey}
+            onStepChange={handleStepChange}
+            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
+            onRegisterLoadFromArchive={(fn) => { loadFromArchiveRef.current = fn }}
+            archive={archive}
+          />
+        </div>
+        {view === 'archive' && (
           viewingEntry ? (
             <ArchiveViewer
               entry={viewingEntry}
@@ -77,14 +88,6 @@ export default function AppPage() {
               onBack={() => setView('tool')}
             />
           )
-        ) : (
-          <App
-            key={appKey}
-            onStepChange={handleStepChange}
-            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
-            onRegisterLoadFromArchive={(fn) => { loadFromArchiveRef.current = fn }}
-            archive={archive}
-          />
         )}
       </AppShell>
     </PasswordGate>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { flushSync } from 'react-dom'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 import { useProgressSimulation } from './useProgressSimulation'
 import { runStream } from '../utils/streamUtils'
@@ -132,7 +131,7 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
+          max_tokens: 8000,
           stream: true,
           system: 'You are an experienced UK secondary science teacher. Analyse class exam performance data and produce a Whole Class Feedback sheet. Output each section as a JSON object on its own line (NDJSON format). Return only the JSON lines — no markdown, no preamble, no extra text.',
           messages: [{ role: 'user', content: userPrompt }],
@@ -171,24 +170,17 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
     }
   }
 
-  // Handle a parsed JSON object from the stream.
-  // Uses flushSync so each section triggers an immediate React render,
-  // making sections appear on screen one by one as they arrive.
   function processWcfObject(obj) {
     if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
       // NDJSON section: {"section":"key_successes","data":[...]}
-      flushSync(() => {
-        setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
-      })
+      setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
     } else {
       // Fallback: legacy single-object format with all sections as top-level keys
       const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
       if (found.length > 0) {
         const patch = {}
         found.forEach(k => { patch[k] = obj[k] })
-        flushSync(() => {
-          setWcfData(prev => ({ ...(prev || {}), ...patch }))
-        })
+        setWcfData(prev => ({ ...(prev || {}), ...patch }))
       }
     }
   }
