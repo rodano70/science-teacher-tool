@@ -46,6 +46,7 @@ export function useClassFeedback({
   topic,
   gradeBoundaries,
   studentData,
+  schemaSummary,
   questionTexts,
   validateInputs,
   setActiveOutput,
@@ -61,9 +62,9 @@ export function useClassFeedback({
     const err = validateInputs()
     if (err) { setWcfError(err); return }
 
-    const summary = computeClassSummary(studentData)
+    const summary = schemaSummary || computeClassSummary(studentData)
     if (!summary) {
-      setWcfError('Could not compute class summary from the uploaded data.')
+      setWcfError('Could not compute class summary from the uploaded data. Try checking the file format.')
       return
     }
 

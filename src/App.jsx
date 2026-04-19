@@ -6,7 +6,7 @@ import { useClassFeedback } from './hooks/useClassFeedback'
 import { useIndividualFeedback } from './hooks/useIndividualFeedback'
 import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { useSchemaDetection } from './hooks/useSchemaDetection'
-import { computeClassSummary, extractStudentsForFeedback, extractStudentsFromSchema } from './classUtils'
+import { computeClassSummary, extractStudentsForFeedback, extractStudentsFromSchema, computeClassSummaryFromSchema } from './classUtils'
 import { computeFingerprint } from './utils/archiveUtils'
 
 function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPendingLoadConsumed }) {
@@ -15,16 +15,20 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
 
   // AI schema detection — runs after each file upload
   const { detectSchema, schemaStatus, detectedSchema } = useSchemaDetection()
-  // Pre-parsed student list from the schema path; null when detection failed or is pending
+  // Schema-parsed student list [{name,total,maxTotal,breakdown}] — used by individual feedback
   const [schemaStudents, setSchemaStudents] = useState(null)
+  // Schema-derived class summary — used by WCF; same shape as computeClassSummary output
+  const [schemaSummary, setSchemaSummary] = useState(null)
 
   async function handleDataParsed(rows) {
     setStudentData(rows)
     setSchemaStudents(null)
+    setSchemaSummary(null)
     if (!rows || rows.length === 0) return
     const schema = await detectSchema(rows)
     if (schema?.nameColumns?.length > 0 && schema?.questionColumns?.length > 0) {
       setSchemaStudents(extractStudentsFromSchema(rows, schema))
+      setSchemaSummary(computeClassSummaryFromSchema(rows, schema))
     }
   }
 
@@ -126,6 +130,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     topic,
     gradeBoundaries,
     studentData,
+    schemaStudents,
     questionTexts,
     validateInputs,
     setActiveOutput,
@@ -139,6 +144,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     topic,
     gradeBoundaries,
     studentData,
+    schemaSummary,
     questionTexts,
     validateInputs,
     setActiveOutput,
@@ -262,6 +268,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     if (!window.confirm('This will clear all results. Are you sure?')) return
     setStudentData(null)
     setSchemaStudents(null)
+    setSchemaSummary(null)
     setExamBoard('')
     setSubject('')
     setTopic('')
@@ -450,7 +457,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
         </div>
       </main>
 
-      <p style={styles.version}>v0.29d</p>
+      <p style={styles.version}>v0.29e</p>
     </>
   )
 }

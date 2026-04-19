@@ -84,6 +84,7 @@ export function useIndividualFeedback({
   topic,
   gradeBoundaries,
   studentData,
+  schemaStudents,
   questionTexts,
   validateInputs,
   setActiveOutput,
@@ -179,9 +180,11 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}. Us
     const err = validateInputs()
     if (err) { setFeedbackError(err); return }
 
-    const rawStudents = extractStudentsForFeedback(studentData)
+    const rawStudents = (schemaStudents?.length > 0)
+      ? schemaStudents
+      : extractStudentsForFeedback(studentData)
     if (!rawStudents || rawStudents.length === 0) {
-      setFeedbackError('Could not extract student data from the uploaded file.')
+      setFeedbackError('Could not extract student data from the uploaded file. Try checking the format or re-uploading.')
       return
     }
 

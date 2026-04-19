@@ -404,3 +404,102 @@ export function extractStudentsFromSchema(rawData, schema) {
     breakdown: s.scores.map((score, i) => `Q${i + 1}:${score}`).join(', '),
   }))
 }
+
+/**
+ * Produce the same summary shape as computeClassSummary, but driven by an
+ * AI-detected schema rather than heuristics. Returns null when no students
+ * can be extracted, so callers can fall back to computeClassSummary.
+ *
+ * @param {object[]} rawData  Full SheetJS rows array
+ * @param {object}   schema   Schema returned by useSchemaDetection
+ */
+export function computeClassSummaryFromSchema(rawData, schema) {
+  if (!rawData || rawData.length === 0 || !schema) return null
+
+  const {
+    nameColumns    = [],
+    questionColumns = [],
+    maxMarksRow,
+    dataStartRow,
+  } = schema
+
+  if (!nameColumns.length || !questionColumns.length) return null
+
+  let maxMarks = null
+  if (maxMarksRow != null && rawData[maxMarksRow]) {
+    const marksRow = rawData[maxMarksRow]
+    maxMarks = questionColumns.map(k => {
+      const v = Number(marksRow[k])
+      return isNaN(v) ? 0 : v
+    })
+  }
+
+  const dataRows      = rawData.slice(dataStartRow != null ? dataStartRow : 0)
+  const questionLabels = questionColumns.map((_, i) => `Q${i + 1}`)
+  const students = []
+
+  for (const row of dataRows) {
+    const rawVals = questionColumns.map(k => row[k])
+    if (rawVals.every(v => v == null)) continue
+
+    let name
+    if (nameColumns.length >= 2) {
+      const p1 = String(row[nameColumns[0]] ?? '').trim()
+      const p2 = String(row[nameColumns[1]] ?? '').trim()
+      name = [p1, p2].filter(Boolean).join(' ')
+    } else {
+      name = String(row[nameColumns[0]] ?? '').trim()
+    }
+    if (!name) continue
+
+    const scores = rawVals.map(v => { const n = Number(v); return isNaN(n) ? 0 : n })
+    students.push({ name, scores, total: scores.reduce((a, b) => a + b, 0) })
+  }
+
+  if (students.length === 0) return null
+
+  if (!maxMarks) {
+    maxMarks = questionColumns.map((_, i) => {
+      const vals = students.map(s => s.scores[i]).filter(v => !isNaN(v))
+      return vals.length > 0 ? Math.max(...vals) : 0
+    })
+  }
+
+  const nonCompleters = students.filter(s => s.total === 0).map(s => s.name)
+  const completers    = students.filter(s => s.total > 0)
+
+  const questions = questionLabels.map((label, i) => {
+    const completerVals = completers.map(s => s.scores[i]).filter(v => !isNaN(v))
+    const avg     = completerVals.length > 0
+      ? completerVals.reduce((a, b) => a + b, 0) / completerVals.length
+      : 0
+    const maxMark = maxMarks[i]
+    return {
+      label,
+      maxMark,
+      average:    Math.round(avg * 10) / 10,
+      averagePct: maxMark > 0 ? Math.round((avg / maxMark) * 100) : null,
+    }
+  })
+
+  const sorted         = [...completers].sort((a, b) => b.total - a.total)
+  const topStudents    = sorted.slice(0, 3).map(s => ({ name: s.name, total: s.total }))
+  const bottomStudents = sorted.slice(-3).reverse().map(s => ({ name: s.name, total: s.total }))
+
+  const classTotalMax = maxMarks.reduce((a, b) => a + b, 0)
+  const classAverage  = completers.length > 0
+    ? Math.round(
+        (completers.reduce((sum, s) => sum + s.total, 0) / completers.length) * 10
+      ) / 10
+    : 0
+
+  return {
+    studentCount: students.length,
+    questions,
+    nonCompleters,
+    topStudents,
+    bottomStudents,
+    classAverage,
+    classTotalMax,
+  }
+}
