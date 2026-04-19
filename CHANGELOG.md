@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.28
+
+- Improvement: restructured individual feedback system prompt with section headings, UK English directive, and explicit tool-use rules.
+
 ## v0.27 — Assessment Archive with localStorage persistence
 
 ### New features
