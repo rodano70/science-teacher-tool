@@ -4,6 +4,7 @@ import PasswordGate from '../components/PasswordGate.jsx'
 import AppShell from '../components/AppShell.jsx'
 import ArchivePanel from '../components/Archive/ArchivePanel.jsx'
 import ArchiveViewer from '../components/Archive/ArchiveViewer.jsx'
+import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useArchive } from '../hooks/useArchive.js'
 
 export default function AppPage() {
@@ -66,32 +67,34 @@ export default function AppPage() {
         archiveCount={archive.entries.length}
         showStepper={view === 'tool'}
       >
-        {view === 'archive' ? (
-          viewingEntry ? (
-            <ArchiveViewer
-              entry={viewingEntry}
-              onBack={() => setViewingEntry(null)}
-              onUpdateNotes={archive.updateNotes}
-              onLoadFromArchive={handleLoadFromArchive}
-            />
+        <ErrorBoundary key={appKey}>
+          {view === 'archive' ? (
+            viewingEntry ? (
+              <ArchiveViewer
+                entry={viewingEntry}
+                onBack={() => setViewingEntry(null)}
+                onUpdateNotes={archive.updateNotes}
+                onLoadFromArchive={handleLoadFromArchive}
+              />
+            ) : (
+              <ArchivePanel
+                archive={archive}
+                onViewEntry={setViewingEntry}
+                onLoadFromArchive={handleLoadFromArchive}
+                onBack={() => setView('tool')}
+              />
+            )
           ) : (
-            <ArchivePanel
+            <App
+              key={appKey}
+              onStepChange={handleStepChange}
+              onRegisterNavigate={(fn) => { navigateRef.current = fn }}
               archive={archive}
-              onViewEntry={setViewingEntry}
-              onLoadFromArchive={handleLoadFromArchive}
-              onBack={() => setView('tool')}
+              pendingLoad={pendingLoad}
+              onPendingLoadConsumed={() => setPendingLoad(null)}
             />
-          )
-        ) : (
-          <App
-            key={appKey}
-            onStepChange={handleStepChange}
-            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
-            archive={archive}
-            pendingLoad={pendingLoad}
-            onPendingLoadConsumed={() => setPendingLoad(null)}
-          />
-        )}
+          )}
+        </ErrorBoundary>
       </AppShell>
     </PasswordGate>
   )
