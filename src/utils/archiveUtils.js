@@ -18,21 +18,16 @@ function djb2(str) {
 export function computeFingerprint(studentData, questionTexts = []) {
   if (!studentData || studentData.length === 0) return 'empty'
 
-  // SheetJS sheet_to_json returns an array of objects; handle both objects and arrays.
-  const rowToStr = row =>
-    Array.isArray(row)
-      ? row.map(cell => String(cell ?? '')).join(',')
-      : Object.values(row).map(cell => String(cell ?? '')).join(',')
+  const rowValues = row => Array.isArray(row) ? row : Object.values(row)
 
-  const firstCell = row =>
-    Array.isArray(row) ? String(row[0] ?? '') : String(Object.values(row)[0] ?? '')
+  // Sort rows by first column (student name) for determinism
+  const sorted = [...studentData].sort((a, b) => {
+    const nameA = String(rowValues(a)[0] ?? '')
+    const nameB = String(rowValues(b)[0] ?? '')
+    return nameA.localeCompare(nameB)
+  })
 
-  // Sort rows by the first cell (student name column) for determinism
-  const sorted = [...studentData].sort((a, b) =>
-    firstCell(a).localeCompare(firstCell(b))
-  )
-
-  const studentStr = sorted.map(rowToStr).join('|')
+  const studentStr = sorted.map(row => rowValues(row).map(cell => String(cell ?? '')).join(',')).join('|')
   const questionStr = questionTexts.join('||')
   return djb2(studentStr + '###' + questionStr)
 }
