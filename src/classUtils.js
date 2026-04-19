@@ -328,3 +328,79 @@ export function formatSummaryForPrompt(summary) {
 
   return lines.join('\n')
 }
+
+// ---------------------------------------------------------------------------
+// Schema-guided extraction (AI-detected format — Step 2 schema)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract a flat student list using an AI-detected schema rather than heuristics.
+ * Returns the same shape as extractStudentsForFeedback:
+ *   [{name, total, maxTotal, breakdown}]
+ * so all existing consumers work without modification.
+ *
+ * @param {object[]} rawData   Full SheetJS rows array
+ * @param {object}   schema    Schema returned by useSchemaDetection
+ */
+export function extractStudentsFromSchema(rawData, schema) {
+  if (!rawData || rawData.length === 0 || !schema) return []
+
+  const {
+    nameColumns    = [],
+    questionColumns = [],
+    maxMarksRow,
+    dataStartRow,
+  } = schema
+
+  if (!nameColumns.length || !questionColumns.length) return []
+
+  // Read max marks from the designated row when the schema provides one
+  let maxMarks = null
+  if (maxMarksRow != null && rawData[maxMarksRow]) {
+    const marksRow = rawData[maxMarksRow]
+    maxMarks = questionColumns.map(k => {
+      const v = Number(marksRow[k])
+      return isNaN(v) ? 0 : v
+    })
+  }
+
+  const dataRows = rawData.slice(dataStartRow != null ? dataStartRow : 0)
+
+  const students = []
+  for (const row of dataRows) {
+    // Skip rows where every question cell is absent (blank rows / metadata rows)
+    const rawVals = questionColumns.map(k => row[k])
+    if (rawVals.every(v => v == null)) continue
+
+    // Build name from one or two columns
+    let name
+    if (nameColumns.length >= 2) {
+      const p1 = String(row[nameColumns[0]] ?? '').trim()
+      const p2 = String(row[nameColumns[1]] ?? '').trim()
+      name = [p1, p2].filter(Boolean).join(' ')
+    } else {
+      name = String(row[nameColumns[0]] ?? '').trim()
+    }
+    if (!name) continue
+
+    const scores = rawVals.map(v => { const n = Number(v); return isNaN(n) ? 0 : n })
+    students.push({ name, scores })
+  }
+
+  // Infer max marks from student data if the schema did not provide a row
+  if (!maxMarks) {
+    maxMarks = questionColumns.map((_, i) => {
+      const vals = students.map(s => s.scores[i]).filter(v => !isNaN(v))
+      return vals.length > 0 ? Math.max(...vals) : 0
+    })
+  }
+
+  const maxTotal = maxMarks.reduce((a, b) => a + b, 0)
+
+  return students.map(s => ({
+    name:      s.name,
+    total:     s.scores.reduce((a, b) => a + b, 0),
+    maxTotal,
+    breakdown: s.scores.map((score, i) => `Q${i + 1}:${score}`).join(', '),
+  }))
+}
