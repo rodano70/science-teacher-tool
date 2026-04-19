@@ -11,30 +11,28 @@ function djb2(str) {
  * Compute a stable fingerprint for an assessment sitting.
  * Two runs with the same marks sheet + same question texts → same fingerprint.
  *
- * studentData is whatever shape SheetJS produced — typically an array of
- * plain objects keyed by column name, but we also handle 2-D arrays defensively.
- *
- * @param {Array} studentData     Parsed rows from SheetJS
- * @param {string[]} questionTexts  Extracted question texts (may be empty)
+ * @param {Array} studentData  Array of objects from SheetJS sheet_to_json (default format)
+ * @param {string[]} questionTexts  Extracted question texts (may be empty array)
  * @returns {string}  Base-36 hash string
  */
 export function computeFingerprint(studentData, questionTexts = []) {
   if (!studentData || studentData.length === 0) return 'empty'
 
-  const rowStrs = studentData.map(row => {
-    if (Array.isArray(row)) {
-      return row.map(cell => String(cell ?? '')).join(',')
-    }
-    if (row && typeof row === 'object') {
-      // Sort keys so object key order doesn't affect the fingerprint
-      const keys = Object.keys(row).sort()
-      return keys.map(k => `${k}=${String(row[k] ?? '')}`).join(',')
-    }
-    return String(row ?? '')
-  })
+  // SheetJS sheet_to_json returns an array of objects; handle both objects and arrays.
+  const rowToStr = row =>
+    Array.isArray(row)
+      ? row.map(cell => String(cell ?? '')).join(',')
+      : Object.values(row).map(cell => String(cell ?? '')).join(',')
 
-  // Sort rows so row order doesn't affect the fingerprint
-  rowStrs.sort()
+  const firstCell = row =>
+    Array.isArray(row) ? String(row[0] ?? '') : String(Object.values(row)[0] ?? '')
 
-  return djb2(rowStrs.join('|') + '###' + questionTexts.join('||'))
+  // Sort rows by the first cell (student name column) for determinism
+  const sorted = [...studentData].sort((a, b) =>
+    firstCell(a).localeCompare(firstCell(b))
+  )
+
+  const studentStr = sorted.map(rowToStr).join('|')
+  const questionStr = questionTexts.join('||')
+  return djb2(studentStr + '###' + questionStr)
 }

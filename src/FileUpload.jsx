@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 
-export default function FileUpload({ onDataParsed }) {
+// studentData — optional; when provided (after remount) the widget shows the
+// "already loaded" state using the row count from the existing data, even though
+// the internal fileName state has reset.
+export default function FileUpload({ onDataParsed, studentData }) {
   const [fileName, setFileName] = useState('')
   const [rowCount, setRowCount] = useState(null)
   const [dragOver, setDragOver] = useState(false)
+
+  // Derive display state: prefer internal state (after a fresh upload in this
+  // render cycle); fall back to the row count from the prop if data already exists.
+  const displayRowCount = rowCount !== null ? rowCount : (studentData?.length ?? null)
+  const isLoaded = fileName !== '' || (studentData && studentData.length > 0)
 
   function parseFile(file) {
     if (!file) return
@@ -49,7 +57,7 @@ export default function FileUpload({ onDataParsed }) {
   return (
     <label
       style={{
-        ...(fileName ? styles.dropZoneLoaded : styles.dropZone),
+        ...(isLoaded ? styles.dropZoneLoaded : styles.dropZone),
         ...(dragOver ? styles.dropZoneActive : {}),
       }}
       onDragOver={handleDragOver}
@@ -62,14 +70,18 @@ export default function FileUpload({ onDataParsed }) {
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
-      {fileName ? (
+      {isLoaded ? (
         <div style={styles.fileInfo}>
           <span className="material-symbols-outlined" style={styles.fileIcon}>description</span>
           <div style={styles.fileDetails}>
-            <span style={styles.fileName}>{fileName}</span>
-            {rowCount !== null && (
+            {fileName ? (
+              <span style={styles.fileName}>{fileName}</span>
+            ) : (
+              <span style={styles.fileName}>Marksheet loaded</span>
+            )}
+            {displayRowCount !== null && (
               <span style={styles.rowCount}>
-                {rowCount} student row{rowCount !== 1 ? 's' : ''} parsed
+                {displayRowCount} student row{displayRowCount !== 1 ? 's' : ''} parsed
               </span>
             )}
           </div>

@@ -109,7 +109,7 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+          max_tokens: 8000,
           stream: true,
           system: SYSTEM_PROMPT,
           tools: [SECTION_TOOL],
@@ -132,6 +132,32 @@ Be specific and curriculum-relevant for ${examBoard} ${subject} — ${topic}.`
     } finally {
       completeProgress()
       setWcfLoading(false)
+    }
+  }
+
+  // flushSync makes each section render immediately so the counter updates live.
+  // The try/catch ensures a flushSync error (e.g. called during a concurrent render)
+  // falls back to a normal setState rather than aborting the stream.
+  function applyWcfUpdate(updater) {
+    try {
+      flushSync(() => setWcfData(updater))
+    } catch {
+      setWcfData(updater)
+    }
+  }
+
+  function processWcfObject(obj) {
+    if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
+      // NDJSON section: {"section":"key_successes","data":[...]}
+      applyWcfUpdate(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
+    } else {
+      // Fallback: legacy single-object format with all sections as top-level keys
+      const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
+      if (found.length > 0) {
+        const patch = {}
+        found.forEach(k => { patch[k] = obj[k] })
+        applyWcfUpdate(prev => ({ ...(prev || {}), ...patch }))
+      }
     }
   }
 

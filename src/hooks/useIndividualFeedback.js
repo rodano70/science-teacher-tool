@@ -54,12 +54,24 @@ export function useIndividualFeedback({
   const [debugInfo, setDebugInfo] = useState(null)
   const { progress: feedbackProgress, startProgress, completeProgress } = useProgressSimulation()
 
+  // Append a validated student object to feedbackData immediately via flushSync,
+  // so each student card renders as soon as it is parsed from the stream.
+  // The try/catch mirrors applyWcfUpdate in useClassFeedback: if React throws
+  // (e.g. called during a concurrent commit), fall back to a normal setState so
+  // the error never propagates to runToolStream's catch block and never silently
+  // discards the student or aborts the stream.
   function appendStudent(obj) {
     if (!obj || !obj.name) return
     if (obj.total != null && obj.maxTotal != null) {
       obj.score = `${obj.total}/${obj.maxTotal}`
     }
-    setFeedbackData(prev => [...(prev || []), obj])
+    try {
+      flushSync(() => {
+        setFeedbackData(prev => [...(prev || []), obj])
+      })
+    } catch {
+      setFeedbackData(prev => [...(prev || []), obj])
+    }
   }
 
   // Run a single streaming request. Each tool call the model emits is appended

@@ -144,12 +144,12 @@ export default function ClassFeedbackPanel({
         onPrint={handlePrint}
       />
 
-      {/* ── Loading card — Phase 1: generating, no sections received yet ──── */}
-      {wcfLoading && !data && (
+      {/* ── Loading card — visible throughout streaming, count updates as sections arrive ── */}
+      {wcfLoading && (
         <div style={styles.loadingCard}>
           <div style={styles.loadingHeader}>
             <p style={styles.loadingLabel}>Generating your class feedback…</p>
-            <span style={styles.loadingCount}>0 of {TOTAL_SECTIONS} modules</span>
+            <span style={styles.loadingCount}>{sectionsReceived} of {TOTAL_SECTIONS} modules</span>
           </div>
           <div style={styles.progressTrack}>
             <div style={{ ...styles.progressBar, width: `${wcfProgress}%` }} />
