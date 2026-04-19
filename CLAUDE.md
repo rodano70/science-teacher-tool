@@ -123,3 +123,6 @@ styled red error box. No toast libraries.
 - Duplicate detection uses a djb2 fingerprint of the marks sheet + question texts.
   When a duplicate is detected, show the `pendingDuplicate` banner and wait for
   explicit user choice (replace / new version / skip) — never overwrite silently.
+- `studentData` is an **array of objects** (SheetJS `sheet_to_json` default — first row
+  becomes keys). It is NOT a 2D array. Any utility that iterates `studentData` rows must
+  use `Object.values(row)` / `Object.keys(row)`, not `row[0]` or `row.map()`.
