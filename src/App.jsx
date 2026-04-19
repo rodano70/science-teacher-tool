@@ -8,7 +8,7 @@ import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 import { computeFingerprint } from './utils/archiveUtils'
 
-function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, archive }) {
+function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPendingLoadConsumed }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -59,20 +59,22 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     })
   }, [onRegisterNavigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register load-from-archive function so AppPage can call it when restoring an entry.
+  // Load a pending archive entry passed via prop (set by AppPage when user clicks
+  // "Load into session"). Runs once on mount; AppPage increments appKey so App
+  // always mounts fresh when a load is triggered.
   useEffect(() => {
-    onRegisterLoadFromArchive?.((entry) => {
-      setExamBoard(entry.metadata.examBoard || '')
-      setSubject(entry.metadata.subject || '')
-      setTopic(entry.metadata.topic || '')
-      if (entry.wcfData) setWcfData(entry.wcfData)
-      if (entry.feedbackData) setFeedbackData(entry.feedbackData)
-      setArchivedSessionId(entry.id)
-      setPendingDuplicate(null)
-      if (entry.wcfData) setActiveOutput('wcf')
-      else if (entry.feedbackData) setActiveOutput('individual')
-    })
-  }, [onRegisterLoadFromArchive]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!pendingLoad) return
+    setExamBoard(pendingLoad.metadata.examBoard || '')
+    setSubject(pendingLoad.metadata.subject || '')
+    setTopic(pendingLoad.metadata.topic || '')
+    if (pendingLoad.wcfData) setWcfData(pendingLoad.wcfData)
+    if (pendingLoad.feedbackData) setFeedbackData(pendingLoad.feedbackData)
+    setArchivedSessionId(pendingLoad.id)
+    setPendingDuplicate(null)
+    if (pendingLoad.wcfData) setActiveOutput('wcf')
+    else if (pendingLoad.feedbackData) setActiveOutput('individual')
+    onPendingLoadConsumed?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared Claude API helper ─────────────────────────────────────────────
 

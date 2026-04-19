@@ -80,7 +80,7 @@ export default function UploadPanel({
                 </span>
               </div>
             </div>
-            <FileUpload onDataParsed={onDataParsed} />
+            <FileUpload onDataParsed={onDataParsed} studentData={studentData} />
           </div>
 
           {/* Question Paper section */}

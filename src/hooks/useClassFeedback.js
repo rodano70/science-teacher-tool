@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { computeClassSummary, formatSummaryForPrompt } from '../classUtils'
 import { useProgressSimulation } from './useProgressSimulation'
 import { runStream } from '../utils/streamUtils'
@@ -170,17 +171,28 @@ Be specific and curriculum-relevant for ${examBoard} ${subject}.`
     }
   }
 
+  // flushSync makes each section render immediately so the counter updates live.
+  // The try/catch ensures a flushSync error (e.g. called during a concurrent render)
+  // falls back to a normal setState rather than aborting the stream.
+  function applyWcfUpdate(updater) {
+    try {
+      flushSync(() => setWcfData(updater))
+    } catch {
+      setWcfData(updater)
+    }
+  }
+
   function processWcfObject(obj) {
     if (obj.section && SECTION_KEYS.includes(obj.section) && obj.data !== undefined) {
       // NDJSON section: {"section":"key_successes","data":[...]}
-      setWcfData(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
+      applyWcfUpdate(prev => ({ ...(prev || {}), [obj.section]: obj.data }))
     } else {
       // Fallback: legacy single-object format with all sections as top-level keys
       const found = SECTION_KEYS.filter(k => obj[k] !== undefined)
       if (found.length > 0) {
         const patch = {}
         found.forEach(k => { patch[k] = obj[k] })
-        setWcfData(prev => ({ ...(prev || {}), ...patch }))
+        applyWcfUpdate(prev => ({ ...(prev || {}), ...patch }))
       }
     }
   }

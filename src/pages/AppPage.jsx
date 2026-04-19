@@ -11,11 +11,11 @@ export default function AppPage() {
   const [activeStep, setActiveStep] = useState(0)
   const [view, setView] = useState('tool')              // 'tool' | 'archive'
   const [viewingEntry, setViewingEntry] = useState(null) // archive entry open in viewer
+  // Entry to load into App on its next mount (set by "Load into session").
+  const [pendingLoad, setPendingLoad] = useState(null)
 
   // App registers its navigate(stepIndex) function here so the stepper can drive it.
   const navigateRef = useRef(null)
-  // App registers its loadFromArchive(entry) function here.
-  const loadFromArchiveRef = useRef(null)
 
   // Archive state lives here so it persists across App remounts (appKey resets).
   const archive = useArchive()
@@ -25,6 +25,7 @@ export default function AppPage() {
     setAppKey(k => k + 1)
     setActiveStep(0)
     navigateRef.current = null
+    setPendingLoad(null)
     setView('tool')
     setViewingEntry(null)
   }, [])
@@ -42,9 +43,13 @@ export default function AppPage() {
     setViewingEntry(null)
   }, [])
 
-  // Called by ArchiveViewer "Load into session" — restores entry data into the live tool.
+  // Called by ArchiveViewer/ArchivePanel "Load into session".
+  // Increments appKey so App remounts fresh, then passes the entry via pendingLoad prop.
   const handleLoadFromArchive = useCallback((entry) => {
-    loadFromArchiveRef.current?.(entry)
+    setPendingLoad(entry)
+    setAppKey(k => k + 1)
+    setActiveStep(0)
+    navigateRef.current = null
     setView('tool')
     setViewingEntry(null)
   }, [])
@@ -61,18 +66,7 @@ export default function AppPage() {
         archiveCount={archive.entries.length}
         showStepper={view === 'tool'}
       >
-        {/* App stays mounted at all times so studentData and form state survive
-            Archive navigation. display:none hides it while Archive is active. */}
-        <div style={{ display: view === 'archive' ? 'none' : undefined }}>
-          <App
-            key={appKey}
-            onStepChange={handleStepChange}
-            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
-            onRegisterLoadFromArchive={(fn) => { loadFromArchiveRef.current = fn }}
-            archive={archive}
-          />
-        </div>
-        {view === 'archive' && (
+        {view === 'archive' ? (
           viewingEntry ? (
             <ArchiveViewer
               entry={viewingEntry}
@@ -88,6 +82,15 @@ export default function AppPage() {
               onBack={() => setView('tool')}
             />
           )
+        ) : (
+          <App
+            key={appKey}
+            onStepChange={handleStepChange}
+            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
+            archive={archive}
+            pendingLoad={pendingLoad}
+            onPendingLoadConsumed={() => setPendingLoad(null)}
+          />
         )}
       </AppShell>
     </PasswordGate>
