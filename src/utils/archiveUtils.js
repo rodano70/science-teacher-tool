@@ -12,21 +12,28 @@ function djb2(str) {
  * Two runs with the same marks sheet + same question texts → same fingerprint.
  * Sorted by student name for determinism even if row order changes.
  *
- * @param {Array[]} studentData  Raw 2-D array from SheetJS (first col = name, rest = marks)
+ * @param {Array} studentData  Array of objects from SheetJS sheet_to_json (default format)
  * @param {string[]} questionTexts  Extracted question texts (may be empty array)
  * @returns {string}  Base-36 hash string
  */
 export function computeFingerprint(studentData, questionTexts = []) {
   if (!studentData || studentData.length === 0) return 'empty'
 
-  // Sort rows by first column (student name) for determinism
-  const sorted = [...studentData].sort((a, b) => {
-    const nameA = String(a[0] ?? '')
-    const nameB = String(b[0] ?? '')
-    return nameA.localeCompare(nameB)
-  })
+  // SheetJS sheet_to_json returns an array of objects; handle both objects and arrays.
+  const rowToStr = row =>
+    Array.isArray(row)
+      ? row.map(cell => String(cell ?? '')).join(',')
+      : Object.values(row).map(cell => String(cell ?? '')).join(',')
 
-  const studentStr = sorted.map(row => row.map(cell => String(cell ?? '')).join(',')).join('|')
+  const firstCell = row =>
+    Array.isArray(row) ? String(row[0] ?? '') : String(Object.values(row)[0] ?? '')
+
+  // Sort rows by the first cell (student name column) for determinism
+  const sorted = [...studentData].sort((a, b) =>
+    firstCell(a).localeCompare(firstCell(b))
+  )
+
+  const studentStr = sorted.map(rowToStr).join('|')
   const questionStr = questionTexts.join('||')
   return djb2(studentStr + '###' + questionStr)
 }
