@@ -10,9 +10,8 @@ function djb2(str) {
 /**
  * Compute a stable fingerprint for an assessment sitting.
  * Two runs with the same marks sheet + same question texts → same fingerprint.
- * Sorted by student name for determinism even if row order changes.
  *
- * @param {Array[]} studentData  Raw 2-D array from SheetJS (first col = name, rest = marks)
+ * @param {Array} studentData  Array of objects from SheetJS sheet_to_json (default format)
  * @param {string[]} questionTexts  Extracted question texts (may be empty array)
  * @returns {string}  Base-36 hash string
  */

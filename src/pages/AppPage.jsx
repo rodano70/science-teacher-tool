@@ -4,6 +4,7 @@ import PasswordGate from '../components/PasswordGate.jsx'
 import AppShell from '../components/AppShell.jsx'
 import ArchivePanel from '../components/Archive/ArchivePanel.jsx'
 import ArchiveViewer from '../components/Archive/ArchiveViewer.jsx'
+import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useArchive } from '../hooks/useArchive.js'
 
 export default function AppPage() {
@@ -11,11 +12,11 @@ export default function AppPage() {
   const [activeStep, setActiveStep] = useState(0)
   const [view, setView] = useState('tool')              // 'tool' | 'archive'
   const [viewingEntry, setViewingEntry] = useState(null) // archive entry open in viewer
+  // Entry to load into App on its next mount (set by "Load into session").
+  const [pendingLoad, setPendingLoad] = useState(null)
 
   // App registers its navigate(stepIndex) function here so the stepper can drive it.
   const navigateRef = useRef(null)
-  // App registers its loadFromArchive(entry) function here.
-  const loadFromArchiveRef = useRef(null)
 
   // Archive state lives here so it persists across App remounts (appKey resets).
   const archive = useArchive()
@@ -25,6 +26,7 @@ export default function AppPage() {
     setAppKey(k => k + 1)
     setActiveStep(0)
     navigateRef.current = null
+    setPendingLoad(null)
     setView('tool')
     setViewingEntry(null)
   }, [])
@@ -42,9 +44,13 @@ export default function AppPage() {
     setViewingEntry(null)
   }, [])
 
-  // Called by ArchiveViewer "Load into session" — restores entry data into the live tool.
+  // Called by ArchiveViewer/ArchivePanel "Load into session".
+  // Increments appKey so App remounts fresh, then passes the entry via pendingLoad prop.
   const handleLoadFromArchive = useCallback((entry) => {
-    loadFromArchiveRef.current?.(entry)
+    setPendingLoad(entry)
+    setAppKey(k => k + 1)
+    setActiveStep(0)
+    navigateRef.current = null
     setView('tool')
     setViewingEntry(null)
   }, [])
@@ -61,31 +67,34 @@ export default function AppPage() {
         archiveCount={archive.entries.length}
         showStepper={view === 'tool'}
       >
-        {view === 'archive' ? (
-          viewingEntry ? (
-            <ArchiveViewer
-              entry={viewingEntry}
-              onBack={() => setViewingEntry(null)}
-              onUpdateNotes={archive.updateNotes}
-              onLoadFromArchive={handleLoadFromArchive}
-            />
+        <ErrorBoundary key={appKey}>
+          {view === 'archive' ? (
+            viewingEntry ? (
+              <ArchiveViewer
+                entry={viewingEntry}
+                onBack={() => setViewingEntry(null)}
+                onUpdateNotes={archive.updateNotes}
+                onLoadFromArchive={handleLoadFromArchive}
+              />
+            ) : (
+              <ArchivePanel
+                archive={archive}
+                onViewEntry={setViewingEntry}
+                onLoadFromArchive={handleLoadFromArchive}
+                onBack={() => setView('tool')}
+              />
+            )
           ) : (
-            <ArchivePanel
+            <App
+              key={appKey}
+              onStepChange={handleStepChange}
+              onRegisterNavigate={(fn) => { navigateRef.current = fn }}
               archive={archive}
-              onViewEntry={setViewingEntry}
-              onLoadFromArchive={handleLoadFromArchive}
-              onBack={() => setView('tool')}
+              pendingLoad={pendingLoad}
+              onPendingLoadConsumed={() => setPendingLoad(null)}
             />
-          )
-        ) : (
-          <App
-            key={appKey}
-            onStepChange={handleStepChange}
-            onRegisterNavigate={(fn) => { navigateRef.current = fn }}
-            onRegisterLoadFromArchive={(fn) => { loadFromArchiveRef.current = fn }}
-            archive={archive}
-          />
-        )}
+          )}
+        </ErrorBoundary>
       </AppShell>
     </PasswordGate>
   )

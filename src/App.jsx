@@ -8,7 +8,7 @@ import { usePdfExtraction } from './hooks/usePdfExtraction'
 import { computeClassSummary, extractStudentsForFeedback } from './classUtils'
 import { computeFingerprint } from './utils/archiveUtils'
 
-function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, archive }) {
+function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPendingLoadConsumed }) {
   // Shared state — both features read from studentData
   const [studentData, setStudentData] = useState(null)
 
@@ -59,46 +59,22 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     })
   }, [onRegisterNavigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register load-from-archive function so AppPage can call it when restoring an entry.
+  // Load a pending archive entry passed via prop (set by AppPage when user clicks
+  // "Load into session"). Runs once on mount; AppPage increments appKey so App
+  // always mounts fresh when a load is triggered.
   useEffect(() => {
-    onRegisterLoadFromArchive?.((entry) => {
-      setExamBoard(entry.metadata.examBoard || '')
-      setSubject(entry.metadata.subject || '')
-      setTopic(entry.metadata.topic || '')
-      if (entry.wcfData) setWcfData(entry.wcfData)
-      if (entry.feedbackData) setFeedbackData(entry.feedbackData)
-      setArchivedSessionId(entry.id)
-      setPendingDuplicate(null)
-      if (entry.wcfData) setActiveOutput('wcf')
-      else if (entry.feedbackData) setActiveOutput('individual')
-    })
-  }, [onRegisterLoadFromArchive]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ─── Shared Claude API helper ─────────────────────────────────────────────
-
-  async function callClaude(systemPrompt, userPrompt, maxTokens) {    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    })
-
-    if (!response.ok) {
-      const errBody = await response.text()
-      throw new Error(`API error ${response.status}: ${errBody}`)
-    }
-
-    return response.json()
-  }
+    if (!pendingLoad) return
+    setExamBoard(pendingLoad.metadata.examBoard || '')
+    setSubject(pendingLoad.metadata.subject || '')
+    setTopic(pendingLoad.metadata.topic || '')
+    if (pendingLoad.wcfData) setWcfData(pendingLoad.wcfData)
+    if (pendingLoad.feedbackData) setFeedbackData(pendingLoad.feedbackData)
+    setArchivedSessionId(pendingLoad.id)
+    setPendingDuplicate(null)
+    if (pendingLoad.wcfData) setActiveOutput('wcf')
+    else if (pendingLoad.feedbackData) setActiveOutput('individual')
+    onPendingLoadConsumed?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared validation ────────────────────────────────────────────────────
 
@@ -128,7 +104,6 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     debugInfo,
     handleGenerateFeedback,
     handleRetryMissing,
-    handleDownloadWordDoc,
   } = useIndividualFeedback({
     examBoard,
     subject,
@@ -137,7 +112,6 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     studentData,
     questionTexts,
     validateInputs,
-    callClaude,
     setActiveOutput,
   })
 
@@ -151,7 +125,6 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     studentData,
     questionTexts,
     validateInputs,
-    callClaude,
     setActiveOutput,
   })
 
@@ -185,7 +158,7 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
 
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
 
-  const _summary = studentData ? computeClassSummary(studentData) : null
+  const summary = studentData ? computeClassSummary(studentData) : null
 
   // ─── Auto-save to archive ─────────────────────────────────────────────────
   // These must live after the hook calls above so wcfLoading/feedbackLoading
@@ -193,9 +166,9 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
 
   function buildArchiveParams(overrides = {}) {
     const fp = computeFingerprint(studentData, questionTexts)
-    const studentCount = _summary?.studentCount ?? (studentData?.length ?? 0)
-    const averageScore = (_summary && _summary.classTotalMax > 0)
-      ? Math.round((_summary.classAverage / _summary.classTotalMax) * 100)
+    const studentCount = summary?.studentCount ?? (studentData?.length ?? 0)
+    const averageScore = (summary && summary.classTotalMax > 0)
+      ? Math.round((summary.classAverage / summary.classTotalMax) * 100)
       : null
     return {
       examBoard, subject, topic,
@@ -248,8 +221,8 @@ function App({ onStepChange, onRegisterNavigate, onRegisterLoadFromArchive, arch
     prevFeedbackLoadingRef.current = feedbackLoading
   }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const questionStats = _summary
-    ? _summary.questions.map(q => ({
+  const questionStats = summary
+    ? summary.questions.map(q => ({
         label: q.label,
         pctCorrect: q.maxMark > 0 ? Math.round((q.average / q.maxMark) * 1000) / 10 : 0,
       }))
