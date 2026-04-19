@@ -1,6 +1,76 @@
 # Changelog
 
-## v0.28
+## v0.30 — AI schema detection for non-standard Excel formats
+
+### Problem solved
+
+The existing parser (`classUtils.js`) handled Educake exports reliably but failed
+silently on teacher-created spreadsheets. Two hard-coded heuristics caused the failure:
+
+1. `isValidStudentName()` requires ≥ 2 words — single-name students (first-name-only
+   columns) were filtered out entirely.
+2. The generic path unconditionally skips every `__EMPTY*` column — when the header
+   row contains merged or blank cells (common in teacher-made sheets), SheetJS assigns
+   those column names, and all per-question scores were lost.
+
+### New feature — AI schema detection
+
+Before parsing begins, a non-streaming Haiku (`claude-haiku-4-5-20251001`) call
+analyses the first ≤ 8 raw SheetJS rows and returns a structured JSON schema:
+
+```json
+{
+  "format": "teacher-custom",
+  "nameColumns": ["First Name"],
+  "questionColumns": ["Redox EOUT", "__EMPTY", "__EMPTY_1", …],
+  "maxMarksRow": 1,
+  "dataStartRow": 2,
+  "notes": "…"
+}
+```
+
+The schema drives a new parsing path that ignores all heuristics. If detection fails
+or returns an unusable schema, the Educake / generic heuristic path is used unchanged.
+
+### New files
+
+- **`src/hooks/useSchemaDetection.js`** — exposes `detectSchema(rawRows)` (async),
+  `schemaStatus` (`"idle"` / `"detecting"` / `"ready"` / `"error"`), and
+  `detectedSchema`. Uses `max_tokens: 500`; strips JSON fences before `JSON.parse`;
+  returns `null` on any failure.
+
+### New exports in `classUtils.js`
+
+- **`extractStudentsFromSchema(rawData, schema)`** — schema-guided equivalent of
+  `extractStudentsForFeedback`. Returns `[{name, total, maxTotal, breakdown}]`.
+  Accepts single-word names; accepts any column key including `__EMPTY*`; derives
+  max marks from `schema.maxMarksRow` when present, otherwise infers from per-column
+  maximum. Existing heuristic functions are untouched.
+
+- **`computeClassSummaryFromSchema(rawData, schema)`** — schema-guided equivalent of
+  `computeClassSummary`. Returns the identical summary shape
+  `{studentCount, questions, nonCompleters, topStudents, bottomStudents, classAverage,
+  classTotalMax}`. Required for the WCF prompt pipeline.
+
+### Changed files
+
+- **`App.jsx`** — `onDataParsed` replaced with async `handleDataParsed()`: sets
+  `studentData` immediately, then fires `detectSchema`, then (on valid schema) stores
+  `schemaStudents` and `schemaSummary` in state. Both passed to the hooks. Version
+  bumped to v0.30.
+
+- **`UploadPanel.jsx`** — accepts `schemaStatus` prop; shows "Analysing file
+  structure…" italic note while detecting and "✓ Format detected" on success.
+
+- **`useIndividualFeedback.js`** — accepts `schemaStudents` prop; prefers it over
+  `extractStudentsForFeedback(studentData)` when non-empty.
+
+- **`useClassFeedback.js`** — accepts `schemaSummary` prop; prefers it over
+  `computeClassSummary(studentData)` when non-null.
+
+- **`LandingPage.jsx`** — version bumped to v0.30.
+
+
 
 - Improvement: restructured individual feedback system prompt with section headings, UK English directive, and explicit tool-use rules.
 

@@ -457,7 +457,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
         </div>
       </main>
 
-      <p style={styles.version}>v0.29e</p>
+      <p style={styles.version}>v0.30</p>
     </>
   )
 }

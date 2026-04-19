@@ -17,7 +17,9 @@ Deployed on Vercel; password-gated at `/app`; no backend.
 src/
 ├── main.jsx                  # React Router entry; two routes: / and /app
 ├── App.jsx                   # Root tool component; owns all shared state
-├── classUtils.js             # ⚠️ DO NOT TOUCH — Excel parsing heuristics (battle-tested)
+├── classUtils.js             # ⚠️ Existing heuristic functions must NOT be modified (battle-tested).
+│                             #   New exports are allowed: extractStudentsFromSchema and
+│                             #   computeClassSummaryFromSchema (schema-guided parsing) were added in v0.30.
 ├── FileUpload.jsx            # SheetJS-based Excel upload widget
 ├── pages/
 │   ├── LandingPage.jsx       # Public marketing page (/)
@@ -39,8 +41,9 @@ src/
 │   └── shared/
 │       └── EditableItem.jsx  # Reusable click-to-edit textarea (wcf + card variants)
 ├── hooks/
-│   ├── useClassFeedback.js      # WCF prompt + streaming logic + state
-│   ├── useIndividualFeedback.js # Individual prompt + SSE streaming + state
+│   ├── useClassFeedback.js      # WCF prompt + streaming logic + state; accepts schemaSummary override
+│   ├── useIndividualFeedback.js # Individual prompt + SSE streaming + state; accepts schemaStudents override
+│   ├── useSchemaDetection.js    # AI schema detection via Haiku (non-streaming); exposes detectSchema, schemaStatus, detectedSchema
 │   ├── usePdfExtraction.js      # PDF → question text via Claude Haiku
 │   ├── useProgressSimulation.js # Asymptotic progress animation (shared by all streaming hooks)
 │   ├── useAutoSizeTextarea.js   # Auto-resize textarea ref helper
@@ -126,3 +129,10 @@ styled red error box. No toast libraries.
 - `studentData` is an **array of objects** (SheetJS `sheet_to_json` default — first row
   becomes keys). It is NOT a 2D array. Any utility that iterates `studentData` rows must
   use `Object.values(row)` / `Object.keys(row)`, not `row[0]` or `row.map()`.
+- **Schema detection data-flow (v0.30+):** after every file upload, `App.jsx` runs
+  `useSchemaDetection.detectSchema(rows)` and, on a valid result, stores two derived
+  states: `schemaStudents` (`extractStudentsFromSchema` output) and `schemaSummary`
+  (`computeClassSummaryFromSchema` output). These are passed as optional override props
+  to `useIndividualFeedback` and `useClassFeedback` respectively. Both hooks prefer the
+  schema path when the prop is non-null/non-empty and fall back to the heuristic
+  functions otherwise. `studentData` always remains the raw SheetJS rows.
