@@ -19,14 +19,16 @@ function djb2(str) {
 export function computeFingerprint(studentData, questionTexts = []) {
   if (!studentData || studentData.length === 0) return 'empty'
 
+  const rowValues = row => Array.isArray(row) ? row : Object.values(row)
+
   // Sort rows by first column (student name) for determinism
   const sorted = [...studentData].sort((a, b) => {
-    const nameA = String(a[0] ?? '')
-    const nameB = String(b[0] ?? '')
+    const nameA = String(rowValues(a)[0] ?? '')
+    const nameB = String(rowValues(b)[0] ?? '')
     return nameA.localeCompare(nameB)
   })
 
-  const studentStr = sorted.map(row => row.map(cell => String(cell ?? '')).join(',')).join('|')
+  const studentStr = sorted.map(row => rowValues(row).map(cell => String(cell ?? '')).join(',')).join('|')
   const questionStr = questionTexts.join('||')
   return djb2(studentStr + '###' + questionStr)
 }
