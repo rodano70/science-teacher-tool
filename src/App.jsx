@@ -76,32 +76,6 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     onPendingLoadConsumed?.()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Shared Claude API helper ─────────────────────────────────────────────
-
-  async function callClaude(systemPrompt, userPrompt, maxTokens) {    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    })
-
-    if (!response.ok) {
-      const errBody = await response.text()
-      throw new Error(`API error ${response.status}: ${errBody}`)
-    }
-
-    return response.json()
-  }
-
   // ─── Shared validation ────────────────────────────────────────────────────
 
   function validateInputs() {
@@ -130,7 +104,6 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     debugInfo,
     handleGenerateFeedback,
     handleRetryMissing,
-    handleDownloadWordDoc,
   } = useIndividualFeedback({
     examBoard,
     subject,
@@ -139,7 +112,6 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     studentData,
     questionTexts,
     validateInputs,
-    callClaude,
     setActiveOutput,
   })
 
@@ -153,7 +125,6 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     studentData,
     questionTexts,
     validateInputs,
-    callClaude,
     setActiveOutput,
   })
 
@@ -187,7 +158,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
 
   // ─── Chart data (derived from studentData, no extra API calls) ───────────
 
-  const _summary = studentData ? computeClassSummary(studentData) : null
+  const summary = studentData ? computeClassSummary(studentData) : null
 
   // ─── Auto-save to archive ─────────────────────────────────────────────────
   // These must live after the hook calls above so wcfLoading/feedbackLoading
@@ -195,9 +166,9 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
 
   function buildArchiveParams(overrides = {}) {
     const fp = computeFingerprint(studentData, questionTexts)
-    const studentCount = _summary?.studentCount ?? (studentData?.length ?? 0)
-    const averageScore = (_summary && _summary.classTotalMax > 0)
-      ? Math.round((_summary.classAverage / _summary.classTotalMax) * 100)
+    const studentCount = summary?.studentCount ?? (studentData?.length ?? 0)
+    const averageScore = (summary && summary.classTotalMax > 0)
+      ? Math.round((summary.classAverage / summary.classTotalMax) * 100)
       : null
     return {
       examBoard, subject, topic,
@@ -250,8 +221,8 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
     prevFeedbackLoadingRef.current = feedbackLoading
   }, [feedbackLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const questionStats = _summary
-    ? _summary.questions.map(q => ({
+  const questionStats = summary
+    ? summary.questions.map(q => ({
         label: q.label,
         pctCorrect: q.maxMark > 0 ? Math.round((q.average / q.maxMark) * 1000) / 10 : 0,
       }))
@@ -461,7 +432,7 @@ function App({ onStepChange, onRegisterNavigate, archive, pendingLoad, onPending
         </div>
       </main>
 
-      <p style={styles.version}>v0.27b</p>
+      <p style={styles.version}>v0.28a</p>
     </>
   )
 }

@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.28a — 2026-04-18
+
+### Fixes
+
+- **Debug info accumulation** (`src/hooks/useIndividualFeedback.js`): `streamStudents` now returns `{stopReason, parsedCount}` instead of calling `setDebugInfo` per batch. `handleGenerateFeedback` accumulates results across all batches and calls `setDebugInfo` once in the `finally` block, eliminating stale closure reads from multiple per-batch state updates.
+- **Truncated flag reset**: `setTruncated(false)` is now also called at the start of `handleRetryMissing`, so a truncated flag from a previous run cannot persist into a retry. `handleGenerateFeedback` already reset it; this closes the retry path.
+
+---
+
+## v0.28 — 2026-04-18
+
+### Fixes
+
+- **`setWcfData(null)` placement** (`src/hooks/useClassFeedback.js`): moved the `setWcfData(null)` call to after the `validateInputs()` guard in `handleGenerateWCF`, so a failed validation (e.g. blank subject) no longer wipes the user's existing WCF output.
+
+### Dead code removal (`src/App.jsx`)
+
+- Removed unused `callClaude` function (individual feedback has used its own `fetch` call since v0.21).
+- Removed unused `handleDownloadWordDoc` function.
+- Renamed `_summary` variable to remove the unused-variable prefix left after an earlier refactor.
+- Removed double-blank-line gaps left behind by the above removals.
+
+---
+
 ## v0.27 — Assessment Archive with localStorage persistence
 
 ### New features
