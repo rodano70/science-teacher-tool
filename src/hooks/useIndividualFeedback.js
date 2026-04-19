@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { flushSync } from 'react-dom'
 import { extractStudentsForFeedback } from '../classUtils'
 import { downloadFeedbackDoc } from '../utils/docUtils'
 import { useProgressSimulation } from './useProgressSimulation'
@@ -106,9 +105,7 @@ export function useIndividualFeedback({
     if (!obj.isNonCompleter && obj.total != null && obj.maxTotal != null) {
       obj.score = `${obj.total}/${obj.maxTotal}`
     }
-    flushSync(() => {
-      setFeedbackData(prev => [...(prev || []), obj])
-    })
+    setFeedbackData(prev => [...(prev || []), obj])
   }
 
   async function streamStudents(promptMessages, onTruncated) {
